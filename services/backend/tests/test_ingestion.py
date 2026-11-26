@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 
 from app.ingestion.connectors.edgar import SecEdgarConnector
-from app.ingestion.extractor import RuleBasedExtractor
+from app.ingestion.extractor import EdgarExtractor
 from app.ingestion.pipeline import ingest
 from app.models import AuditLog, Breach, Provenance
 from app.models.enums import ReviewStatus
@@ -30,18 +30,16 @@ def test_extractor_parses_edgar_hit():
             "form": "8-K",
         },
     }
-    ext = RuleBasedExtractor().extract(hit)
+    ext = EdgarExtractor().extract(hit)
     assert ext is not None
     assert ext.organization == "Example Tech Corp"
     assert ext.date_disclosed == date(2024, 9, 10)
-    assert ext.accession == "0000111111-24-000115"
+    assert ext.external_id == "0000111111-24-000115"
     assert "edgar/data" in ext.source_url
 
 
 def test_extractor_returns_none_without_names():
-    assert (
-        RuleBasedExtractor().extract({"_id": "x", "_source": {"file_date": "2024-10-02"}}) is None
-    )
+    assert EdgarExtractor().extract({"_id": "x", "_source": {"file_date": "2024-10-02"}}) is None
 
 
 def test_ingest_creates_review_candidates(fresh_session):
