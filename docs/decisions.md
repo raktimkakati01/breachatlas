@@ -103,7 +103,57 @@ confidence_label, source_id, date_retrieved)`), not just once per breach.
 
 ---
 
-## Source terms-of-use notes (filled in per connector during Phase 4)
+## ADR-0007 — Reference datasets: pinned sources, committed derived subset
+
+**Date:** 2026-11-26 · **Status:** Accepted · **Phase:** 2
+
+BreachAtlas loads three reference datasets and keeps them updatable:
+
+- **MITRE ATT&CK Enterprise** — official STIX from `mitre-attack/attack-stix-data`, pinned to
+  version **20.1** at commit `a8db2f52…` and verified by SHA-256. The raw bundle is ~55 MB, so
+  it is **git-ignored**; a `scripts/build_reference.py` step extracts the ~243 KB subset we use
+  (techniques, mitigations, and `mitigates` mappings) into `enterprise-attack-derived.json`,
+  which **is** committed. `make ref-data` re-downloads and rebuilds it.
+- **CISA KEV** — `known_exploited_vulnerabilities.json` from cisa.gov (~1.9 MB, U.S. public
+  domain); small enough to commit directly.
+- **CIS Controls v8** — see ADR-0008.
+
+- **Why:** Pinning + checksums give supply-chain reproducibility; committing only the derived
+  subset keeps the repo light while still working offline and in CI with no network. The raw
+  55 MB blob in git history would bloat every clone forever.
+- **Trade-off:** `make ref-data` needs network to refresh, and the derived subset must be
+  rebuilt when bumping the ATT&CK version. Acceptable for a reference dataset.
+
+---
+
+## ADR-0008 — CIS Controls v8: curated IDs + titles only
+
+**Date:** 2026-11-26 · **Status:** Accepted · **Phase:** 2
+
+`data/reference/cis/cis_controls_v8.json` contains all **18 controls and 153 safeguard
+numbers + short titles**, with attribution — but **not** the full normative guidance text,
+which is under a CIS license and not redistributed.
+
+- **Why:** We only need safeguard identifiers/titles to map our prevention controls to CIS v8.
+  Control/safeguard numbers and short titles are factual identifiers; the licensed prose stays
+  at CIS.
+- **Caveat:** Safeguard titles were transcribed for development and are flagged
+  `"verified": false` in the file. They must be checked against the official CIS Controls v8
+  before publication (Phase 12).
+- **Mapping crosswalk:** `data/reference/crosswalk/mitigation_to_control.json` maps ATT&CK
+  mitigations → our controls. It is our own **Analysis**, used only to *suggest* controls to a
+  human reviewer — never to auto-publish.
+
+---
+
+## Source terms-of-use / licensing notes
+
+**Reference datasets (Phase 2):**
+- **MITRE ATT&CK** — free under the ATT&CK Terms of Use (attribution required): https://attack.mitre.org/resources/legal-and-branding/terms-of-use/ . Checked 2026-11-26.
+- **CISA KEV** — U.S. Government work, public domain; CISA requests attribution. Checked 2026-11-26.
+- **CIS Controls v8** — © Center for Internet Security. We store only numbers + short titles for mapping/attribution; full text obtained separately from CIS. Checked 2026-11-26.
+
+**Ingestion connectors (filled in per connector during Phase 4):**
 
 > Before implementing each ingestion connector we check the source's current Terms of Use
 > and `robots.txt`, record the findings here with the date checked, and skip any source

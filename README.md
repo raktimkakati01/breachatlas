@@ -59,6 +59,24 @@ pytest -q
 
 ---
 
+### Reference data (Phase 2)
+
+BreachAtlas loads three reference datasets and maps breaches against them:
+
+- **MITRE ATT&CK Enterprise** v20.1 — 706 techniques + 44 mitigations (committed as a compact
+  243 KB derived subset; the raw ~55 MB STIX is git-ignored, rebuildable via `make ref-data`).
+- **CIS Controls v8** — all 18 controls / 153 safeguards (IDs + titles; see `docs/decisions.md`).
+- **CISA KEV** — the Known Exploited Vulnerabilities catalog.
+
+```bash
+make load-ref     # load ATT&CK / CIS / KEV into the database (docker)
+make ref-data     # re-download pinned sources + rebuild the committed ATT&CK subset
+```
+
+Mapping logic (`app/mapping/`) turns a breach's ATT&CK techniques into **suggested** controls
+(technique → ATT&CK mitigation → CIS-aligned control) and validates that every control points at
+a real CIS safeguard. Suggestions are advisory only — a human reviewer confirms them (Phase 3).
+
 ## Repository layout
 
 ```

@@ -9,7 +9,13 @@ BACKEND := services/backend
 VENV := $(BACKEND)/.venv
 VENV_PY := $(VENV)/bin/python
 
-.PHONY: help venv up down logs migrate seed test fmt lint destroy
+# Pinned upstream reference sources (see docs/decisions.md ADR-0007).
+ATTACK_SHA := a8db2f52eb933c9c99060c123e088b3326d3a607
+ATTACK_VER := 20.1
+ATTACK_RAW := data/reference/attack/enterprise-attack-$(ATTACK_VER).json
+KEV_RAW := data/reference/kev/known_exploited_vulnerabilities.json
+
+.PHONY: help venv up down logs migrate seed load-ref ref-data test fmt lint destroy
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -37,6 +43,16 @@ migrate: ## Apply database migrations (inside backend container)
 
 seed: ## Load clearly-marked DEMO fixture data
 	$(COMPOSE) run --rm backend python -m app.db.seed
+
+load-ref: ## Load reference datasets (ATT&CK / CIS v8 / CISA KEV) into the database
+	$(COMPOSE) run --rm backend python -m app.reference
+
+ref-data: ## Re-download pinned upstream sources and rebuild the committed ATT&CK subset
+	@echo ">> downloading pinned ATT&CK Enterprise v$(ATTACK_VER) (~55MB) and CISA KEV"
+	curl -sSL "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/$(ATTACK_SHA)/enterprise-attack/enterprise-attack-$(ATTACK_VER).json" -o $(ATTACK_RAW)
+	curl -sSL "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" -o $(KEV_RAW)
+	$(PYTHON) -I scripts/build_reference.py $(ATTACK_RAW) data/reference/attack
+	@echo ">> rebuilt data/reference/attack/enterprise-attack-derived.json"
 
 test: | $(VENV) ## Run backend test suite (in-memory SQLite, no docker needed)
 	cd $(BACKEND) && .venv/bin/python -m pytest -q

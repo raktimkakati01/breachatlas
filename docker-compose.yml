@@ -25,6 +25,10 @@ services:
     environment:
       # Override host so the backend reaches the db service inside the compose network.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-breachatlas}:${POSTGRES_PASSWORD:-change_me_locally}@db:5432/${POSTGRES_DB:-breachatlas}
+      # Reference datasets are mounted (not baked into the image) so they can be refreshed.
+      REFERENCE_DATA_DIR: /app/data/reference
+    volumes:
+      - ./data/reference:/app/data/reference:ro
     ports:
       - "8000:8000"
     depends_on:
