@@ -1,0 +1,55 @@
+# Secrets & local env — NEVER commit real values
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Databases / local data
+*.sqlite3
+*.db
+pgdata/
+
+# Node / frontend (Phase 6)
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Terraform (Phase 7)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Graphify output (knowledge graph, regenerated)
+graphify-out/

@@ -1,0 +1,25 @@
+[project]
+name = "breachatlas-backend"
+version = "0.1.0"
+description = "BreachAtlas backend API — read-only public API over the breach data model."
+requires-python = ">=3.11,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# E/F pycodestyle+pyflakes, I import-sort, B bugbear, UP pyupgrade, S bandit (security)
+select = ["E", "F", "I", "B", "UP", "S"]
+# B008: FastAPI requires Depends()/Query() calls in parameter defaults — idiomatic, not a bug.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]        # asserts are expected in tests
+"app/db/seed.py" = ["S608"] # no raw SQL here, defensive

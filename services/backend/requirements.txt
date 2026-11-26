@@ -1,0 +1,9 @@
+# Runtime dependencies (pinned). Supported Python: 3.11–3.12.
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.36
+pydantic==2.10.3
+pydantic-settings==2.7.0
+psycopg[binary]==3.2.3
+alembic==1.14.0
+slowapi==0.1.9

@@ -1,0 +1,1 @@
+"""BreachAtlas backend application package."""
