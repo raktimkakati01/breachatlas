@@ -40,9 +40,19 @@ make down
 
 ### Run the tests (no Docker needed — uses in-memory SQLite)
 
+Requires **Python 3.11 or 3.12** (3.13+ has no `pydantic-core` wheels yet). The target
+creates the backend virtualenv on first run, then reuses it:
+
+```bash
+make test
+```
+
+Override the interpreter if `python3.12` isn't your default: `make test PYTHON=python3.11`.
+Prefer to drive it yourself?
+
 ```bash
 cd services/backend
-python3 -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest -q
 ```
