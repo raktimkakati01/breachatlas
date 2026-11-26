@@ -21,9 +21,20 @@ class Settings(BaseSettings):
     # local | ci | production
     APP_ENV: str = "local"
 
+    # --- Admin sessions ---
+    SESSION_COOKIE_NAME: str = "ba_session"
+    SESSION_TTL_HOURS: int = 12
+    # Login attempts allowed per minute per client IP.
+    LOGIN_RATE_LIMIT: str = "10/minute"
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def cookie_secure(self) -> bool:
+        # Secure cookies require HTTPS; disable only outside production (local http dev).
+        return self.APP_ENV == "production"
 
 
 settings = Settings()
