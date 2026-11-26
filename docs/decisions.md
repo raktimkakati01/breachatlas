@@ -146,6 +146,38 @@ which is under a CIS license and not redistributed.
 
 ---
 
+## ADR-0009 — Admin auth, roles, review workflow, and audit log
+
+**Date:** 2026-11-26 · **Status:** Accepted · **Phase:** 3
+
+- **Sessions, not JWTs.** Login creates an opaque high-entropy token; only its **SHA-256 is
+  stored** (`sessions.token_hash`), sent to the client as an httpOnly, SameSite=Lax cookie
+  (Secure in production). This is instantly revocable (logout, disable user, expiry) and a DB
+  leak cannot be replayed. JWTs were rejected for this phase because revocation needs a denylist.
+- **Argon2** (`argon2-cffi`) for password hashing — memory-hard, modern default.
+- **TOTP MFA** (`pyotp`): per-user enroll → verify → enforced at login. Login errors are
+  **generic** ("Invalid credentials") so MFA failure doesn't reveal a correct password.
+- **Roles:** `editor` (draft + submit), `reviewer` (approve/publish/reject), `admin` (+ user
+  management + audit log). Enforced by a `require_role()` dependency; `admin` is always allowed.
+- **Review state machine** (`app/services/review.py`): `draft → in_review → approved →
+  published` (+ `changes_requested`, `rejected`). **Nothing auto-publishes** — `is_published`
+  flips true only on an explicit `publish` from an `approved` record. Every transition writes a
+  per-breach changelog entry *and* an audit entry.
+- **Audit log** (`audit_log`) is distinct from the per-breach changelog: it records *who did
+  what* across the whole admin surface (logins, user creation, transitions), with actor email
+  denormalized so history survives user deletion.
+- **First admin** is created via `python -m app.cli.create_user`; the password comes from an env
+  var or a hidden prompt, never argv or the repo.
+
+**Known limitations (documented for interviews / production hardening):**
+- `users.mfa_secret` is stored unencrypted. Production should encrypt it at rest (e.g. app-level
+  envelope encryption with a KMS key), since a DB read otherwise yields the TOTP seed.
+- Login is covered by the global per-IP rate limit; a stricter per-route login throttle and
+  account lockout are a future enhancement.
+- Session cookie `Secure` is disabled outside production so local http dev works.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**

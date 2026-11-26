@@ -77,6 +77,27 @@ Mapping logic (`app/mapping/`) turns a breach's ATT&CK techniques into **suggest
 (technique → ATT&CK mitigation → CIS-aligned control) and validates that every control points at
 a real CIS safeguard. Suggestions are advisory only — a human reviewer confirms them (Phase 3).
 
+### Admin area & review workflow (Phase 3)
+
+An authenticated admin area (`/admin`) gates everything behind **server-side sessions**
+(httpOnly cookie), **roles**, and optional **TOTP MFA**:
+
+- **Roles**: `editor` (draft + submit), `reviewer` (approve / publish / reject), `admin`
+  (+ user management + audit log).
+- **Review workflow** — nothing publishes automatically:
+  `draft → in_review → approved → published` (plus `changes_requested`, `rejected`). Publishing
+  is an explicit reviewer/admin action; every transition is changelogged **and** audit-logged.
+- **Audit log** (`/admin/audit`, admin-only) records every admin action (logins, user creation,
+  transitions).
+
+Create the first admin (password via env or hidden prompt — never committed):
+
+```bash
+BREACHATLAS_ADMIN_PASSWORD='choose-a-strong-one' make create-admin EMAIL=you@example.com
+```
+
+See `docs/decisions.md` (ADR-0009) for the auth design and its documented limitations.
+
 ## Repository layout
 
 ```
