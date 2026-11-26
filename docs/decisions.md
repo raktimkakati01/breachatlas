@@ -178,6 +178,33 @@ which is under a CIS license and not redistributed.
 
 ---
 
+## ADR-0010 — Isolated SSRF-hardened fetcher + ingestion worker
+
+**Date:** 2026-11-26 · **Status:** Accepted · **Phase:** 4
+
+- **The fetcher is a separate service/container** (`services/fetcher`) and the *only* thing that
+  dereferences external URLs. In docker compose it sits on its own `fetchnet` network with **no
+  route to the database**; the worker bridges `internal` + `fetchnet`. So even a total fetcher
+  compromise cannot reach Postgres or internal services.
+- **SSRF guard** (`app/ssrf.py`, heavily tested): http/https only; rejects any host whose literal
+  IP — or **every** resolved DNS address — is private, loopback, link-local (incl. the
+  `169.254.169.254` metadata endpoint), CGNAT, reserved, multicast or unspecified; **re-validates
+  every redirect hop**; caps redirects, response size, and time.
+- **Worker** (`app/ingestion`, run as a separate container from the same backend image) uses
+  **APScheduler** to run connectors on their own cadence. It calls the fetcher over HTTP and never
+  fetches directly.
+- **Pluggable extractor** (`Extractor` Protocol, rule-based today) so an AI extractor can slot in
+  later without touching the pipeline. Candidates are deduplicated (same org + close dates) and
+  created as **`in_review`** with full provenance, a changelog entry, and an audit entry — nothing
+  is published automatically (ties into ADR-0009).
+
+**Known limitation:** the guard resolves-then-fetches, leaving a narrow TOCTOU / DNS-rebinding
+window where a second resolution could differ. Mitigated by rejecting if *any* resolved address is
+internal; production hardening would pin the connection to the validated IP and/or route the
+fetcher through an egress allowlist proxy.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**
@@ -191,7 +218,11 @@ which is under a CIS license and not redistributed.
 > and `robots.txt`, record the findings here with the date checked, and skip any source
 > whose terms forbid this use.
 
-- **SEC EDGAR** — _pending Phase 4._
+- **SEC EDGAR** — _checked 2026-11-26._ Public-domain U.S. Government data. Fair Access requires a
+  **descriptive User-Agent with a contact** (requests without one get HTTP 403 "Request Rate
+  Threshold Exceeded") and **≤ 10 requests/second**; see sec.gov/developer. We enforce the UA in
+  the fetcher (`FETCHER_USER_AGENT`) and build/test against recorded fixtures; live pulls are
+  opt-in (`make ingest-edgar`). Permitted for this use.
 - **HHS OCR breach portal** — _pending Phase 4._
 - **Maine AG breach notifications** — _pending Phase 4._
 - **UK ICO enforcement** — _pending Phase 4._

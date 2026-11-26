@@ -98,6 +98,28 @@ BREACHATLAS_ADMIN_PASSWORD='choose-a-strong-one' make create-admin EMAIL=you@exa
 
 See `docs/decisions.md` (ADR-0009) for the auth design and its documented limitations.
 
+### Ingestion: isolated fetcher + SEC EDGAR (Phase 4)
+
+Ingestion is split for safety:
+
+- **Fetcher** (`services/fetcher`, its own container) is the only component that dereferences
+  external URLs. It is **SSRF-hardened** — http/https only; blocks private / loopback / link-local
+  (incl. `169.254.169.254` metadata) / CGNAT / reserved addresses, resolving DNS and re-checking
+  **every redirect hop**; caps redirects, size and time. In compose it runs on a network with **no
+  route to the database**.
+- **Worker** (`services/worker`, same image as backend, scheduler command) runs connectors on a
+  schedule, calls the fetcher, deduplicates, and files candidates into the review queue as
+  `in_review`. Nothing publishes automatically.
+- **SEC EDGAR connector** — 8-K filings citing **Item 1.05** (material cyber incidents) via the
+  official full-text search API. Built/tested against recorded fixtures; a live pass is opt-in:
+
+```bash
+# Set a real contact UA first (SEC blocks requests without one):
+FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
+```
+
+HHS OCR, Maine AG, UK ICO, and news-RSS connectors follow in later Phase 4 iterations.
+
 ## Repository layout
 
 ```
