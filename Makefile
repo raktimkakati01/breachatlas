@@ -15,7 +15,7 @@ ATTACK_VER := 20.1
 ATTACK_RAW := data/reference/attack/enterprise-attack-$(ATTACK_VER).json
 KEV_RAW := data/reference/kev/known_exploited_vulnerabilities.json
 
-.PHONY: help venv up down logs migrate seed load-ref ref-data test fmt lint destroy
+.PHONY: help venv up down logs migrate seed load-ref ref-data create-admin test fmt lint destroy
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -46,6 +46,9 @@ seed: ## Load clearly-marked DEMO fixture data
 
 load-ref: ## Load reference datasets (ATT&CK / CIS v8 / CISA KEV) into the database
 	$(COMPOSE) run --rm backend python -m app.reference
+
+create-admin: ## Create first admin: make create-admin EMAIL=you@example.com (password prompted / env)
+	$(COMPOSE) run --rm -e BREACHATLAS_ADMIN_PASSWORD backend python -m app.cli.create_user --email $(EMAIL) --role admin
 
 ref-data: ## Re-download pinned upstream sources and rebuild the committed ATT&CK subset
 	@echo ">> downloading pinned ATT&CK Enterprise v$(ATTACK_VER) (~55MB) and CISA KEV"

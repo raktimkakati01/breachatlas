@@ -30,6 +30,7 @@ from app.models.enums import (
     ConfidenceLabel,
     ConfirmationStatus,
     ControlRelationship,
+    ReviewStatus,
     RootCauseStatus,
     SourceType,
 )
@@ -95,6 +96,9 @@ def load_fixtures(db: Session, path: Path = FIXTURE_PATH) -> int:
             lessons_for_defenders=b.get("lessons_for_defenders"),
             what_users_should_do=b.get("what_users_should_do"),
             is_published=b.get("is_published", False),
+            review_status=(
+                ReviewStatus.published if b.get("is_published", False) else ReviewStatus.draft
+            ),
         )
         breach.data_types = [data_types[s] for s in b.get("data_types", [])]
 

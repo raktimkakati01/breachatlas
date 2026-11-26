@@ -1,11 +1,11 @@
-"""BreachAtlas backend — read-only public API.
+"""BreachAtlas backend — public read API + authenticated admin area.
 
-Security posture (Phase 1 baseline):
-  * Read-only API, rate limited per client IP (slowapi).
+Security posture:
+  * Public API is read-only, rate limited per client IP (slowapi).
+  * Admin area behind server-side sessions (httpOnly cookie), roles, and optional TOTP MFA.
   * Secure response headers on every response.
   * Parameterized queries only (SQLAlchemy ORM) — no string-built SQL.
   * Strict input validation via Pydantic / FastAPI query constraints.
-The admin/write surface and its auth arrive in Phase 3.
 """
 
 from __future__ import annotations
@@ -14,21 +14,17 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
+from app.api.admin import admin_router
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.core.limiter import limiter
 
 # Paths that must keep inline scripts (Swagger UI / ReDoc) — excluded from the strict CSP.
 _DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[f"{settings.API_RATE_LIMIT}/minute"],
-)
 
 app = FastAPI(
     title="BreachAtlas API",
@@ -43,10 +39,10 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=False,
-    allow_methods=["GET"],  # read-only API
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,  # explicit origins (never "*") so credentials are safe
+    allow_credentials=True,  # admin area uses session cookies
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -70,6 +66,7 @@ async def security_headers(
 
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/admin")
 
 
 @app.get("/", include_in_schema=False)
