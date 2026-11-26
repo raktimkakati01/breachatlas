@@ -1,0 +1,19 @@
+[project]
+name = "breachatlas-fetcher"
+version = "0.1.0"
+description = "Isolated, SSRF-hardened URL fetcher."
+requires-python = ">=3.11,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S104"]  # asserts + "0.0.0.0" test data are expected in tests
