@@ -13,13 +13,17 @@ from app.models.models import (
     Breach,
     BreachControl,
     ChangeLog,
+    CisSafeguard,
     Control,
     DataType,
+    KevEntry,
+    Mitigation,
     Provenance,
     Source,
     Technique,
     attack_step_techniques,
     breach_data_types,
+    technique_mitigations,
 )
 
 __all__ = [
@@ -33,11 +37,15 @@ __all__ = [
     "Breach",
     "BreachControl",
     "ChangeLog",
+    "CisSafeguard",
     "Control",
     "DataType",
+    "KevEntry",
+    "Mitigation",
     "Provenance",
     "Source",
     "Technique",
     "attack_step_techniques",
     "breach_data_types",
+    "technique_mitigations",
 ]

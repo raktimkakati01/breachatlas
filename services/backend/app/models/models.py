@@ -55,6 +55,14 @@ attack_step_techniques = Table(
     SAColumn("technique_id", ForeignKey("techniques.id", ondelete="CASCADE"), primary_key=True),
 )
 
+# ATT&CK "mitigates" relationships: a mitigation mitigates a technique.
+technique_mitigations = Table(
+    "technique_mitigations",
+    Base.metadata,
+    SAColumn("technique_id", ForeignKey("techniques.id", ondelete="CASCADE"), primary_key=True),
+    SAColumn("mitigation_id", ForeignKey("mitigations.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class Breach(Base):
     __tablename__ = "breaches"
@@ -149,18 +157,23 @@ class AttackStep(Base):
 
 
 class Technique(Base):
-    """MITRE ATT&CK technique. Fully loaded in Phase 2; seeded minimally via fixtures now."""
+    """MITRE ATT&CK technique. Fully loaded from ATT&CK Enterprise in Phase 2."""
 
     __tablename__ = "techniques"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     technique_id: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # e.g. T1566
     name: Mapped[str] = mapped_column(String(255))
-    tactic: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Comma-joined tactic names; a technique can belong to several tactics.
+    tactic: Mapped[str | None] = mapped_column(String(255), nullable=True)
     url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_subtechnique: Mapped[bool] = mapped_column(Boolean, default=False)
 
     attack_steps: Mapped[list[AttackStep]] = relationship(
         secondary=attack_step_techniques, back_populates="techniques"
+    )
+    mitigations: Mapped[list[Mitigation]] = relationship(
+        secondary=technique_mitigations, back_populates="techniques"
     )
 
 
@@ -256,3 +269,51 @@ class ChangeLog(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     breach: Mapped[Breach] = relationship(back_populates="changelog")
+
+
+# --- Reference data (loaded in Phase 2 from ATT&CK / CIS v8 / CISA KEV) ---
+
+
+class Mitigation(Base):
+    """MITRE ATT&CK mitigation / course of action (M-code)."""
+
+    __tablename__ = "mitigations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mitigation_id: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # e.g. M1032
+    name: Mapped[str] = mapped_column(String(255))
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    techniques: Mapped[list[Technique]] = relationship(
+        secondary=technique_mitigations, back_populates="mitigations"
+    )
+
+
+class CisSafeguard(Base):
+    """A CIS Controls v8 safeguard (e.g. 6.3). Reference list; titles only, no licensed text."""
+
+    __tablename__ = "cis_safeguards"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    safeguard_id: Mapped[str] = mapped_column(String(10), unique=True, index=True)  # e.g. "6.3"
+    control_number: Mapped[int] = mapped_column(Integer, index=True)  # 1..18
+    control_title: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(500))
+
+
+class KevEntry(Base):
+    """A CISA Known Exploited Vulnerabilities (KEV) catalog entry."""
+
+    __tablename__ = "kev_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cve_id: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    vendor_project: Mapped[str] = mapped_column(String(255))
+    product: Mapped[str] = mapped_column(String(255))
+    vulnerability_name: Mapped[str] = mapped_column(String(500))
+    date_added: Mapped[date] = mapped_column(Date, index=True)
+    short_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    required_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    known_ransomware: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
