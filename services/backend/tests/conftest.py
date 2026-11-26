@@ -23,6 +23,7 @@ from app.db.base import Base  # noqa: E402
 from app.db.seed import load_fixtures  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app, limiter  # noqa: E402
+from app.reference.loaders import load_all  # noqa: E402
 
 
 def _new_memory_engine() -> Engine:
@@ -82,3 +83,25 @@ def fresh_session() -> Iterator[Session]:
     finally:
         db.close()
         eng.dispose()
+
+
+@pytest.fixture(scope="session")
+def ref_engine() -> Engine:
+    """A shared in-memory database with the full reference datasets loaded once."""
+    eng = _new_memory_engine()
+    Base.metadata.create_all(eng)
+    s = sessionmaker(bind=eng, future=True)()
+    try:
+        load_all(s)
+    finally:
+        s.close()
+    return eng
+
+
+@pytest.fixture
+def ref_session(ref_engine: Engine) -> Iterator[Session]:
+    db = sessionmaker(bind=ref_engine, future=True)()
+    try:
+        yield db
+    finally:
+        db.close()
