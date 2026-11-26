@@ -53,3 +53,8 @@ npm-debug.log*
 
 # Graphify output (knowledge graph, regenerated)
 graphify-out/
+
+# Large upstream reference source (~55MB). Regenerate via `make ref-data`.
+# The committed, compact derived subset is enterprise-attack-derived.json.
+data/reference/attack/enterprise-attack-*.json
+!data/reference/attack/enterprise-attack-derived.json

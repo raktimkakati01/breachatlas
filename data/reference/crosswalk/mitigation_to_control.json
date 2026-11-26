@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "description": "Curated crosswalk from MITRE ATT&CK mitigations (M-codes) to BreachAtlas prevention controls. Used to SUGGEST controls for a breach from its techniques; suggestions are always reviewed by a human before publishing (Phase 3).",
+    "source": "BreachAtlas curation (Analysis), informed by ATT&CK mitigation definitions.",
+    "confidence": "analysis"
+  },
+  "mitigation_to_control": {
+    "M1032": "mfa",
+    "M1051": "patch-management",
+    "M1030": "network-segmentation",
+    "M1026": "least-privilege-iam",
+    "M1018": "least-privilege-iam",
+    "M1053": "backups",
+    "M1047": "logging-alerting"
+  }
+}
