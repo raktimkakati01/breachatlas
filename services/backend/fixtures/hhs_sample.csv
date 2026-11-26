@@ -1,0 +1,4 @@
+Name of Covered Entity,State,Covered Entity Type,Individuals Affected,Breach Submission Date,Type of Breach,Location of Breached Information,Business Associate Present,Web Description
+Example Regional Hospital,TX,Healthcare Provider,52000,09/15/2024,Hacking/IT Incident,Network Server,No,Fictional demo record for ingestion tests.
+Example Health Plan Inc.,CA,Health Plan,13500,08/01/2024,Unauthorized Access/Disclosure,Email,Yes,Fictional demo record for ingestion tests.
+,NY,Healthcare Provider,,10/01/2024,Theft,Laptop,No,Row with no entity name — should be skipped as unparsed.

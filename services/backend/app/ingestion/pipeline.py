@@ -1,7 +1,8 @@
 """Ingestion pipeline: discover → extract → dedup → create review-queue candidates.
 
-Every candidate is created as `in_review` with full provenance, a changelog entry, and an
-audit entry. Nothing is published automatically — a human reviewer decides (Phase 3).
+Source-agnostic: each connector supplies its own extractor. Every candidate is created as
+`in_review` with per-field provenance, a changelog entry, and an audit entry. Nothing is
+published automatically — a human reviewer decides (Phase 3).
 """
 
 from __future__ import annotations
@@ -14,23 +15,9 @@ from app.core.slug import slugify, unique_breach_slug
 from app.crud.audit import write_audit
 from app.ingestion.connectors.base import Connector, Fetch
 from app.ingestion.dedup import find_duplicate
-from app.ingestion.extractor import ExtractedBreach, Extractor, RuleBasedExtractor
+from app.ingestion.extractor import ExtractedBreach, Extractor
 from app.models import Breach, ChangeLog, Provenance, Source
-from app.models.enums import (
-    ConfidenceLabel,
-    ConfirmationStatus,
-    ReviewStatus,
-    RootCauseStatus,
-    SourceType,
-)
-
-# Field-level provenance for a fresh EDGAR candidate.
-_PROVENANCE = (
-    ("organization", ConfidenceLabel.confirmed),
-    ("date_disclosed", ConfidenceLabel.confirmed),
-    ("country", ConfidenceLabel.analysis),
-    ("root_cause_status", ConfidenceLabel.undisclosed),
-)
+from app.models.enums import ConfidenceLabel, ReviewStatus, RootCauseStatus
 
 
 def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) -> Breach:
@@ -38,11 +25,12 @@ def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) ->
     breach = Breach(
         slug=slug,
         organization=ext.organization,
-        country="United States",  # SEC registrant default; refined during review
-        sector="Unknown",
+        country=ext.country,
+        sector=ext.sector or "Unknown",
         date_disclosed=ext.date_disclosed,
-        confirmation_status=ConfirmationStatus.confirmed,  # an official 8-K disclosure
-        root_cause_status=RootCauseStatus.undisclosed,  # 8-Ks rarely state root cause
+        records_affected=ext.records_affected,
+        confirmation_status=ext.confirmation_status,
+        root_cause_status=RootCauseStatus.undisclosed,  # never guessed from ingestion
         review_status=ReviewStatus.in_review,
         is_published=False,
     )
@@ -50,8 +38,8 @@ def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) ->
         Source(
             url=ext.source_url,
             title=ext.source_title,
-            publisher="SEC EDGAR",
-            source_type=SourceType.filing,
+            publisher=ext.source_publisher,
+            source_type=ext.source_type,
             date_retrieved=date.today(),
         )
     )
@@ -59,13 +47,24 @@ def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) ->
         ChangeLog(
             changed_by=f"ingestion:{connector_name}",
             change_type="ingested",
-            reason="Candidate from SEC EDGAR 8-K Item 1.05 full-text search.",
+            reason=f"Candidate ingested from {ext.source_publisher}.",
         )
     )
     db.add(breach)
-    db.flush()  # assign breach.id for provenance rows
+    db.flush()  # assign breach.id for provenance
 
-    for field_name, label in _PROVENANCE:
+    provenance = {
+        "organization": ConfidenceLabel.confirmed,
+        "date_disclosed": ConfidenceLabel.confirmed,
+        "country": ConfidenceLabel.analysis,
+        "root_cause_status": ConfidenceLabel.undisclosed,
+        "records_affected": (
+            ConfidenceLabel.confirmed
+            if "records_affected" in ext.confident_fields
+            else ConfidenceLabel.undisclosed
+        ),
+    }
+    for field_name, label in provenance.items():
         db.add(
             Provenance(
                 entity="breach",
@@ -90,7 +89,7 @@ def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) ->
 def ingest(
     db: Session, connector: Connector, fetch: Fetch, extractor: Extractor | None = None
 ) -> dict[str, int]:
-    extractor = extractor or RuleBasedExtractor()
+    extractor = extractor or connector.extractor
     raws = connector.discover(fetch)
 
     created = skipped = unparsed = 0

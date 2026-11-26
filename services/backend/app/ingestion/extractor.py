@@ -1,16 +1,18 @@
-"""Pluggable extractor interface.
+"""Pluggable extractors — one per source format, behind a common Protocol.
 
-Rule-based now, behind a Protocol so an AI/LLM extractor can be dropped in later without
-changing the pipeline. An extractor turns one raw source record into a normalized candidate
-(or None if it can't be parsed confidently).
+Each extractor turns one raw source record into a normalized `ExtractedBreach` (or None if it
+can't be parsed confidently). Rule-based today; an AI/LLM extractor can implement the same
+Protocol and be swapped in per connector without touching the pipeline.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Protocol
+
+from app.models.enums import ConfirmationStatus, SourceType
 
 
 @dataclass
@@ -19,24 +21,36 @@ class ExtractedBreach:
     date_disclosed: date
     source_url: str
     source_title: str
-    accession: str | None = None
+    source_publisher: str
+    source_type: SourceType
+    confirmation_status: ConfirmationStatus
+    country: str = "United States"
+    sector: str | None = None
+    records_affected: int | None = None
+    external_id: str | None = None
+    # Extra provenance-bearing fields the connector is confident about, e.g.
+    # {"records_affected": ConfidenceLabel.confirmed}. Pipeline merges these in.
+    confident_fields: list[str] = field(default_factory=list)
 
 
 class Extractor(Protocol):
     def extract(self, raw: dict) -> ExtractedBreach | None: ...
 
 
+# --- SEC EDGAR ---
+
+
 def _edgar_index_url(cik: str, accession: str) -> str:
     nodash = accession.replace("-", "")
     try:
-        cik_int = int(cik)
+        cik_int: int | str = int(cik)
     except (TypeError, ValueError):
         cik_int = cik
     return f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{nodash}/{accession}-index.htm"
 
 
-class RuleBasedExtractor:
-    """Parses SEC EDGAR full-text search hits (EFTS JSON) into candidates."""
+class EdgarExtractor:
+    """Parses SEC EDGAR full-text search hits (EFTS JSON)."""
 
     def extract(self, raw: dict) -> ExtractedBreach | None:
         src = raw.get("_source", {})
@@ -45,9 +59,12 @@ class RuleBasedExtractor:
         if not names or not file_date:
             return None
 
-        # "Apple Inc. (AAPL) (CIK 0000320193)" -> "Apple Inc."
-        organization = re.sub(r"\s*\(.*$", "", names[0]).strip()
+        organization = re.sub(r"\s*\(.*$", "", names[0]).strip()  # drop "(TICKER) (CIK ...)"
         if not organization:
+            return None
+        try:
+            disclosed = date.fromisoformat(file_date)
+        except ValueError:
             return None
 
         accession = (raw.get("_id") or "").split(":")[0] or None
@@ -57,15 +74,55 @@ class RuleBasedExtractor:
             if ciks and accession
             else "https://www.sec.gov/cgi-bin/browse-edgar"
         )
-        try:
-            disclosed = date.fromisoformat(file_date)
-        except ValueError:
-            return None
-
         return ExtractedBreach(
             organization=organization,
             date_disclosed=disclosed,
             source_url=source_url,
             source_title=f"{src.get('form', '8-K')} (Item 1.05)",
-            accession=accession,
+            source_publisher="SEC EDGAR",
+            source_type=SourceType.filing,
+            confirmation_status=ConfirmationStatus.confirmed,  # an official 8-K disclosure
+            external_id=accession,
+        )
+
+
+# --- HHS OCR breach portal ---
+
+
+def _parse_hhs_date(value: str) -> date | None:
+    value = (value or "").strip()
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            from datetime import datetime
+
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+class HhsExtractor:
+    """Parses rows from the HHS OCR breach-report CSV (500+ individual breaches)."""
+
+    def extract(self, raw: dict) -> ExtractedBreach | None:
+        name = (raw.get("Name of Covered Entity") or "").strip()
+        disclosed = _parse_hhs_date(raw.get("Breach Submission Date", ""))
+        if not name or disclosed is None:
+            return None
+
+        affected_raw = (raw.get("Individuals Affected") or "").replace(",", "").strip()
+        records = int(affected_raw) if affected_raw.isdigit() else None
+
+        return ExtractedBreach(
+            organization=name,
+            date_disclosed=disclosed,
+            source_url="https://ocrportal.hhs.gov/ocr/breach/breach_report.jsf",
+            source_title="HHS OCR Breach Report (500+ individuals)",
+            source_publisher="HHS OCR",
+            source_type=SourceType.regulator,
+            confirmation_status=ConfirmationStatus.confirmed,  # reported to the regulator
+            country="United States",
+            sector="Healthcare",
+            records_affected=records,
+            confident_fields=["records_affected"] if records is not None else [],
         )
