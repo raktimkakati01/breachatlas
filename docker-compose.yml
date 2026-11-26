@@ -1,5 +1,7 @@
-# BreachAtlas — local development stack (Phase 1: db + backend).
-# worker, fetcher, frontend services are added in later phases.
+# BreachAtlas — local development stack.
+# Network split (SSRF isolation): the fetcher sits only on `fetchnet` and cannot reach the
+# database. The worker bridges both networks — it calls the fetcher and writes to the db —
+# but the fetcher itself can never touch internal services.
 services:
   db:
     image: postgres:16.4-alpine
@@ -11,6 +13,8 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-breachatlas}"]
       interval: 5s
@@ -31,9 +35,42 @@ services:
       - ./data/reference:/app/data/reference:ro
     ports:
       - "8000:8000"
+    networks:
+      - internal
     depends_on:
       db:
         condition: service_healthy
 
+  # Isolated, SSRF-hardened URL fetcher. Only on fetchnet — no route to the database.
+  fetcher:
+    build:
+      context: ./services/fetcher
+    environment:
+      # SEC and others require a descriptive UA with a real contact. Set this before live use.
+      FETCHER_USER_AGENT: ${FETCHER_USER_AGENT:-BreachAtlas-fetcher/0.1 (contact: set-me@example.com)}
+    networks:
+      - fetchnet
+
+  # Ingestion worker (same image as backend, different command). Bridges both networks.
+  worker:
+    build:
+      context: ./services/backend
+    command: ["python", "-m", "app.ingestion.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-breachatlas}:${POSTGRES_PASSWORD:-change_me_locally}@db:5432/${POSTGRES_DB:-breachatlas}
+      FETCHER_URL: http://fetcher:8001
+    networks:
+      - internal
+      - fetchnet
+    depends_on:
+      db:
+        condition: service_healthy
+      fetcher:
+        condition: service_started
+
 volumes:
   pgdata:
+
+networks:
+  internal:
+  fetchnet:
