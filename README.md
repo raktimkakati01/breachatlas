@@ -110,15 +110,20 @@ Ingestion is split for safety:
 - **Worker** (`services/worker`, same image as backend, scheduler command) runs connectors on a
   schedule, calls the fetcher, deduplicates, and files candidates into the review queue as
   `in_review`. Nothing publishes automatically.
-- **SEC EDGAR connector** — 8-K filings citing **Item 1.05** (material cyber incidents) via the
-  official full-text search API. Built/tested against recorded fixtures; a live pass is opt-in:
+- **Connectors** (each with its own extractor behind a shared Protocol):
+  - **SEC EDGAR** — 8-K filings citing **Item 1.05** (material cyber incidents) via the official
+    full-text search API.
+  - **HHS OCR** — US healthcare breaches affecting 500+ individuals (CSV breach portal; brings
+    `records_affected` and sector).
+
+Both are built/tested against recorded fixtures; a live SEC pass is opt-in:
 
 ```bash
 # Set a real contact UA first (SEC blocks requests without one):
 FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
 ```
 
-HHS OCR, Maine AG, UK ICO, and news-RSS connectors follow in later Phase 4 iterations.
+Maine AG, UK ICO, and news-RSS connectors follow in later Phase 4 iterations.
 
 ## Repository layout
 

@@ -223,7 +223,11 @@ fetcher through an egress allowlist proxy.
   Threshold Exceeded") and **≤ 10 requests/second**; see sec.gov/developer. We enforce the UA in
   the fetcher (`FETCHER_USER_AGENT`) and build/test against recorded fixtures; live pulls are
   opt-in (`make ingest-edgar`). Permitted for this use.
-- **HHS OCR breach portal** — _pending Phase 4._
+- **HHS OCR breach portal** — _checked 2026-11-26._ Public-domain U.S. Government data (breaches
+  affecting 500+ individuals). No `robots.txt` (404 → no crawl restrictions). The portal exposes
+  the list as a CSV export; the connector parses CSV and is built/tested against fixtures. Note:
+  the live CSV export is JSF-driven, so a live run needs the portal's export request wired up
+  (follow-up). Permitted for this use.
 - **Maine AG breach notifications** — _pending Phase 4._
 - **UK ICO enforcement** — _pending Phase 4._
 - **News RSS (leads only)** — _pending Phase 4._
