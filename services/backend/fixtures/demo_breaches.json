@@ -1,0 +1,134 @@
+{
+  "_meta": {
+    "demo": true,
+    "notice": "FICTIONAL DEMO DATA. These organizations and breaches are invented for local development only. They are NOT real breaches. Real published data must come only through the Phase 3 review workflow. No leaked data is stored anywhere in this project.",
+    "generated_for": "Phase 1 local development"
+  },
+  "techniques": [
+    {"technique_id": "T1566", "name": "Phishing", "tactic": "Initial Access", "url": "https://attack.mitre.org/techniques/T1566/"},
+    {"technique_id": "T1078", "name": "Valid Accounts", "tactic": "Privilege Escalation", "url": "https://attack.mitre.org/techniques/T1078/"},
+    {"technique_id": "T1190", "name": "Exploit Public-Facing Application", "tactic": "Initial Access", "url": "https://attack.mitre.org/techniques/T1190/"},
+    {"technique_id": "T1486", "name": "Data Encrypted for Impact", "tactic": "Impact", "url": "https://attack.mitre.org/techniques/T1486/"},
+    {"technique_id": "T1567", "name": "Exfiltration Over Web Service", "tactic": "Exfiltration", "url": "https://attack.mitre.org/techniques/T1567/"}
+  ],
+  "controls": [
+    {"slug": "mfa", "name": "Multi-Factor Authentication", "description": "Require a second authentication factor for accounts, especially privileged and remote access.", "cis_control_id": "6", "cis_safeguard": "6.3"},
+    {"slug": "secret-scanning", "name": "Secret Scanning", "description": "Automatically detect committed credentials, keys and tokens before they are exposed.", "cis_control_id": "16", "cis_safeguard": "16.11"},
+    {"slug": "patch-management", "name": "Patch & Vulnerability Management", "description": "Timely remediation of known-exploited and high-severity vulnerabilities.", "cis_control_id": "7", "cis_safeguard": "7.3"},
+    {"slug": "least-privilege-iam", "name": "Least-Privilege IAM", "description": "Grant the minimum access required and review entitlements regularly.", "cis_control_id": "6", "cis_safeguard": "6.8"},
+    {"slug": "network-segmentation", "name": "Network Segmentation", "description": "Limit lateral movement by separating networks and enforcing boundaries.", "cis_control_id": "12", "cis_safeguard": "12.2"},
+    {"slug": "logging-alerting", "name": "Logging & Alerting", "description": "Centralized logging with alerting to detect intrusions and exfiltration early.", "cis_control_id": "8", "cis_safeguard": "8.11"},
+    {"slug": "backups", "name": "Recovery & Backups", "description": "Maintain tested, offline backups to recover from destructive attacks.", "cis_control_id": "11", "cis_safeguard": "11.2"}
+  ],
+  "data_types": [
+    {"slug": "names", "name": "Full names"},
+    {"slug": "emails", "name": "Email addresses"},
+    {"slug": "passwords-hashed", "name": "Hashed passwords"},
+    {"slug": "payment-card", "name": "Payment card data"},
+    {"slug": "health-records", "name": "Health records"},
+    {"slug": "ssn", "name": "Social Security numbers"}
+  ],
+  "breaches": [
+    {
+      "slug": "demo-retail-co-2024",
+      "organization": "Demo Retail Co (fictional)",
+      "country": "United States",
+      "sector": "Retail",
+      "date_disclosed": "2024-03-15",
+      "date_occurred": "2024-01-10",
+      "records_affected": 1200000,
+      "confirmation_status": "confirmed",
+      "root_cause_status": "disclosed",
+      "is_published": true,
+      "summary": "A fictional retailer disclosed that attackers phished an employee, reused the stolen session to reach an internal reporting tool, and exported customer order data over a common cloud service. Used here to demonstrate the data model.",
+      "lessons_for_defenders": "Phishing-resistant MFA on employee accounts would have blocked the reused session. Egress monitoring would have shortened the time to detection.",
+      "what_users_should_do": "Watch for card misuse, enable transaction alerts, and treat unexpected 'order confirmation' emails with caution.",
+      "data_types": ["names", "emails", "payment-card"],
+      "attack_steps": [
+        {"step_order": 1, "phase": "initial_access", "description": "Employee phished via a fake single sign-on page; credentials and session captured.", "techniques": ["T1566"]},
+        {"step_order": 2, "phase": "escalation_movement", "description": "Reused valid session to access an internal reporting application.", "techniques": ["T1078"]},
+        {"step_order": 3, "phase": "exfiltration", "description": "Customer order data exported to an attacker-controlled cloud storage bucket.", "techniques": ["T1567"]}
+      ],
+      "controls": [
+        {"slug": "mfa", "relationship_type": "would_have_prevented"},
+        {"slug": "logging-alerting", "relationship_type": "would_have_limited"}
+      ],
+      "sources": [
+        {"url": "https://example.com/demo-retail-co/notice", "title": "Demo Retail Co breach notice (fictional)", "publisher": "Demo Retail Co", "source_type": "official", "date_retrieved": "2024-03-16"},
+        {"url": "https://example.com/news/demo-retail-co", "title": "Fictional news write-up", "publisher": "Example Security News", "source_type": "news", "date_retrieved": "2024-03-17"}
+      ],
+      "provenance": [
+        {"field_name": "date_disclosed", "confidence_label": "confirmed", "date_retrieved": "2024-03-16"},
+        {"field_name": "records_affected", "confidence_label": "reported", "date_retrieved": "2024-03-17"},
+        {"field_name": "root_cause_status", "confidence_label": "confirmed", "date_retrieved": "2024-03-16"},
+        {"field_name": "lessons_for_defenders", "confidence_label": "analysis", "date_retrieved": "2024-03-18"}
+      ]
+    },
+    {
+      "slug": "example-health-clinic-2023",
+      "organization": "Example Health Clinic (fictional)",
+      "country": "United States",
+      "sector": "Healthcare",
+      "date_disclosed": "2023-11-02",
+      "date_occurred": null,
+      "records_affected": 85000,
+      "confirmation_status": "confirmed",
+      "root_cause_status": "undisclosed",
+      "is_published": true,
+      "summary": "A fictional clinic reported a ransomware incident affecting patient records. The clinic did not state how the attackers first got in, so root cause remains Undisclosed — demonstrating the project's 'never guess' rule.",
+      "lessons_for_defenders": "Prompt patching of internet-facing systems and segmented backups materially reduce ransomware impact, even when the initial vector is unknown.",
+      "what_users_should_do": "Monitor for medical identity theft and review any unexpected insurance correspondence.",
+      "data_types": ["health-records", "names", "ssn"],
+      "attack_steps": [
+        {"step_order": 1, "phase": "initial_access", "description": "Suspected exploitation of an internet-facing application (vector not confirmed by the clinic).", "techniques": ["T1190"]},
+        {"step_order": 2, "phase": "impact", "description": "Patient record systems encrypted; services disrupted.", "techniques": ["T1486"]}
+      ],
+      "controls": [
+        {"slug": "patch-management", "relationship_type": "would_have_prevented"},
+        {"slug": "network-segmentation", "relationship_type": "would_have_limited"},
+        {"slug": "backups", "relationship_type": "would_have_limited"}
+      ],
+      "sources": [
+        {"url": "https://example.com/health-clinic/statement", "title": "Clinic public statement (fictional)", "publisher": "Example Health Clinic", "source_type": "official", "date_retrieved": "2023-11-03"}
+      ],
+      "provenance": [
+        {"field_name": "date_disclosed", "confidence_label": "confirmed", "date_retrieved": "2023-11-03"},
+        {"field_name": "records_affected", "confidence_label": "confirmed", "date_retrieved": "2023-11-03"},
+        {"field_name": "root_cause_status", "confidence_label": "undisclosed", "date_retrieved": "2023-11-03"},
+        {"field_name": "attack_steps", "confidence_label": "analysis", "date_retrieved": "2023-11-05"}
+      ]
+    },
+    {
+      "slug": "acme-saas-2025",
+      "organization": "Acme SaaS Ltd (fictional)",
+      "country": "United Kingdom",
+      "sector": "Technology",
+      "date_disclosed": "2025-06-20",
+      "date_occurred": null,
+      "records_affected": null,
+      "confirmation_status": "unconfirmed",
+      "root_cause_status": "undisclosed",
+      "is_published": true,
+      "summary": "A fictional SaaS provider was named in reports alleging access via a leaked API key in a public code repository. The company has not confirmed the incident, so it is marked Unconfirmed with an Undisclosed record count.",
+      "lessons_for_defenders": "Secret scanning on every commit and short-lived, least-privilege credentials sharply reduce the blast radius of a leaked key.",
+      "what_users_should_do": "If you use the service, rotate API tokens and watch for unusual account activity.",
+      "data_types": ["emails", "passwords-hashed"],
+      "attack_steps": [
+        {"step_order": 1, "phase": "initial_access", "description": "Alleged use of a valid API key exposed in a public repository.", "techniques": ["T1078"]}
+      ],
+      "controls": [
+        {"slug": "secret-scanning", "relationship_type": "would_have_prevented"},
+        {"slug": "least-privilege-iam", "relationship_type": "would_have_limited"}
+      ],
+      "sources": [
+        {"url": "https://example.com/news/acme-saas-report", "title": "Fictional reporting on alleged incident", "publisher": "Example Security News", "source_type": "news", "date_retrieved": "2025-06-21"}
+      ],
+      "provenance": [
+        {"field_name": "date_disclosed", "confidence_label": "reported", "date_retrieved": "2025-06-21"},
+        {"field_name": "records_affected", "confidence_label": "undisclosed", "date_retrieved": "2025-06-21"},
+        {"field_name": "root_cause_status", "confidence_label": "undisclosed", "date_retrieved": "2025-06-21"},
+        {"field_name": "confirmation_status", "confidence_label": "reported", "date_retrieved": "2025-06-21"}
+      ]
+    }
+  ]
+}
