@@ -46,3 +46,18 @@ class SourceType(str, enum.Enum):
 class ControlRelationship(str, enum.Enum):
     would_have_prevented = "would_have_prevented"
     would_have_limited = "would_have_limited"
+
+
+class UserRole(str, enum.Enum):
+    editor = "editor"  # create/edit draft breaches, submit to review
+    reviewer = "reviewer"  # review the queue: approve, request changes, publish
+    admin = "admin"  # all of the above + user management + audit log
+
+
+class ReviewStatus(str, enum.Enum):
+    draft = "draft"
+    in_review = "in_review"
+    changes_requested = "changes_requested"
+    approved = "approved"
+    published = "published"
+    rejected = "rejected"

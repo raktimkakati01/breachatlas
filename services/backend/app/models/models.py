@@ -35,8 +35,10 @@ from app.models.enums import (
     ConfidenceLabel,
     ConfirmationStatus,
     ControlRelationship,
+    ReviewStatus,
     RootCauseStatus,
     SourceType,
+    UserRole,
 )
 
 # --- Plain association tables (no extra columns) ---
@@ -91,7 +93,13 @@ class Breach(Base):
     lessons_for_defenders: Mapped[str | None] = mapped_column(Text, nullable=True)
     what_users_should_do: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Nothing is public until a human publishes it (Phase 3 review workflow).
+    # Review workflow state (Phase 3). Nothing is public until a human publishes it:
+    # is_published only flips true on an explicit `published` transition.
+    review_status: Mapped[ReviewStatus] = mapped_column(
+        Enum(ReviewStatus, name="review_status"),
+        default=ReviewStatus.draft,
+        index=True,
+    )
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -317,3 +325,67 @@ class KevEntry(Base):
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     known_ransomware: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+# --- Admin: users, sessions, audit log (Phase 3) ---
+
+
+class User(Base):
+    """An admin-area user. Passwords are Argon2 hashes; TOTP secret is for optional MFA."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    # TOTP shared secret. See docs/decisions.md: encrypt at rest in production.
+    mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    sessions: Mapped[list[UserSession]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserSession(Base):
+    """A server-side session. Only the SHA-256 of the opaque token is stored, never the token."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class AuditLog(Base):
+    """Immutable record of every admin action (distinct from the per-breach changelog)."""
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    actor_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    actor_email: Mapped[str | None] = mapped_column(String(320), nullable=True)  # denormalized
+    action: Mapped[str] = mapped_column(String(100), index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
