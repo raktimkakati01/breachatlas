@@ -19,11 +19,12 @@ type Node = {
 type Link = { a: string; b: string };
 
 const W = 960;
-const H = 480;
 // Column x-positions: techniques (left), breaches (centre), controls (right).
 // The right column is pulled in from the edge so long control labels
 // ("Multi-Factor Authentication") have room before the viewBox edge.
 const COL_X = [140, 450, 720];
+const ROW = 46; // vertical units per row — keeps spacing constant at any scale
+const PAD_Y = 44; // top/bottom padding inside the viewBox
 
 function layout(breaches: BreachDetail[]) {
   const techIds = new Set<string>();
@@ -49,11 +50,15 @@ function layout(breaches: BreachDetail[]) {
     }
   }
 
+  // Height grows with the tallest column so nodes never overlap at scale.
+  const rows = Math.max(techIds.size, breaches.length, ctrlIds.size, 1);
+  const H = Math.max(320, rows * ROW + PAD_Y * 2);
+
   const place = (ids: string[], col: 0 | 1 | 2, mk: (id: string) => Node): Node[] =>
     ids.map((id, i) => {
       const n = mk(id);
-      const gap = (H - 80) / Math.max(ids.length, 1);
-      return { ...n, x: COL_X[col], y: 40 + gap * (i + 0.5), col };
+      const gap = (H - PAD_Y * 2) / Math.max(ids.length, 1);
+      return { ...n, x: COL_X[col], y: PAD_Y + gap * (i + 0.5), col };
     });
 
   const nodes: Node[] = [
@@ -93,12 +98,22 @@ function layout(breaches: BreachDetail[]) {
   ];
 
   const byId: Record<string, Node> = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  return { nodes, links, byId };
+  return { nodes, links, byId, H };
 }
 
-export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
+export default function BreachMap({
+  breaches,
+  maxBreaches,
+}: {
+  breaches: BreachDetail[];
+  maxBreaches?: number;
+}) {
   const router = useRouter();
-  const { nodes, links, byId } = useMemo(() => layout(breaches), [breaches]);
+  const shown = useMemo(
+    () => (maxBreaches ? breaches.slice(0, maxBreaches) : breaches),
+    [breaches, maxBreaches],
+  );
+  const { nodes, links, byId, H } = useMemo(() => layout(shown), [shown]);
   const [hover, setHover] = useState<string | null>(null);
 
   const connected = useMemo(() => {
@@ -135,7 +150,14 @@ export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
         <span className="text-line-strong">→</span>
         <span>missing control</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Breach map">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ maxHeight: "min(70vh, 620px)" }}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Breach map"
+      >
         {links.map((l, i) => {
           const a = byId[l.a];
           const b = byId[l.b];
