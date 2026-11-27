@@ -44,7 +44,9 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2.0.1
 
-      - name: Build and push images (only on confirmed deploy)
+      - uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Build, push, and sign images (only on confirmed deploy)
         if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
@@ -57,6 +59,20 @@ jobs:
             echo "Building $repo:$TAG"
             docker build -t "$repo:$TAG" "${ctx[$svc]}"
             docker push "$repo:$TAG"
+
+            # Resolve the immutable digest and sign THAT, never a mutable tag.
+            digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$repo:$TAG")"
+            echo "Signing $digest (keyless)"
+            # Keyless signing: uses this workflow's GitHub OIDC identity; the
+            # signature + short-lived cert are recorded in the PUBLIC Sigstore
+            # Rekor transparency log. No private keys are stored anywhere.
+            cosign sign --yes "$digest"
+
+            # Smoke-test the signature right away, bound to this repo's workflow.
+            cosign verify \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/deploy.yml@.*$" \
+              "$digest"
           done
 
       - uses: hashicorp/setup-terraform@v3.1.2

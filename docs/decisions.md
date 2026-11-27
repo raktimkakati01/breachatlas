@@ -319,6 +319,30 @@ path that would put it in AWS. Neither costs anything in normal operation.
 
 ---
 
+## ADR-0015 — Supply-chain hardening: npm audit, Dependabot, Cosign keyless, repo settings
+
+**Date:** 2026-11-27 · **Status:** Accepted · **Phase:** 9
+
+Phase 9 hardens what goes into the artifacts and proves who built them.
+
+- **`npm audit` gate** added to `ci.yml` (`sca-npm-audit`) — frontend deps fail the build on
+  HIGH/CRITICAL. Baseline at introduction: **0 vulnerabilities**. This is the job deferred from the
+  earlier CI note now that `services/frontend` exists.
+- **Dependabot** (`.github/dependabot.yml`) opens grouped weekly PRs for Python (backend + fetcher),
+  npm (frontend), GitHub Actions, and all three Dockerfiles — so upgrades stay small and reviewable.
+- **Cosign keyless image signing** wired into the **manual** `deploy.yml`: each image is signed **by
+  digest** using the workflow's **GitHub OIDC** identity (no private keys), and verified immediately,
+  pinned to this repo's deploy workflow + GitHub's OIDC issuer. Signatures publish to the **public
+  Sigstore/Rekor transparency log**, so signing runs **only on a real deploy** (`confirm = DEPLOY`),
+  never on ordinary CI. Chosen over documentation-only so the artifact is a working signed-supply-chain
+  pipeline. See `docs/supply-chain.md`.
+- **Repo hardening** (applied via `gh` on `raktimkakati01/breachatlas`): secret scanning + push
+  protection, Dependabot alerts, and private vulnerability reporting (`SECURITY.md`) + `CODEOWNERS`.
+  Branch protection on `main` is documented as optional and left off, so direct pushes stay convenient
+  on a solo repo — a deliberate convenience-vs-rigor call, not an oversight.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**

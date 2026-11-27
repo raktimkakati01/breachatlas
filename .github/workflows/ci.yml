@@ -195,6 +195,21 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
 
+  # --- SCA: frontend dependency audit (npm audit) ---
+  sca-npm-audit:
+    name: SCA (npm audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: "22"
+      - name: npm audit (fail on HIGH/CRITICAL)
+        working-directory: services/frontend
+        run: npm audit --audit-level=high
+
   # --- IaC scan (Checkov) on the Terraform → SARIF to code scanning ---
   # Fails the build on any failed policy; the only exemptions are the 8 inline
   # `checkov:skip` comments in infra/terraform, each of which states its reason.
@@ -223,6 +238,6 @@ jobs:
           sarif_file: checkov.sarif
           category: checkov
 
-  # NOTE: the npm-audit job for services/frontend is activated in Phase 9
-  # (dependency hardening). It is omitted here rather than guarded with
-  # hashFiles(), which is not valid in a job-level `if`.
+  # NOTE: DAST (OWASP ZAP) runs in its own dast.yml workflow; Cosign keyless
+  # image signing lives in the manual deploy.yml. Both are kept out of this fast
+  # PR gate on purpose (a live scan / a real deploy is slow and/or billable).

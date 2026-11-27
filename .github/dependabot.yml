@@ -1,0 +1,56 @@
+version: 2
+updates:
+  # --- Python dependencies ---
+  - package-ecosystem: pip
+    directory: /services/backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-python:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: pip
+    directory: /services/fetcher
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      fetcher-python:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # --- Frontend (npm) ---
+  - package-ecosystem: npm
+    directory: /services/frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-npm:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # --- GitHub Actions (keeps the pinned action versions current) ---
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # --- Container base images ---
+  - package-ecosystem: docker
+    directory: /services/backend
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /services/fetcher
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /services/frontend
+    schedule:
+      interval: weekly
