@@ -1,0 +1,239 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default: no permissions unless a job opts in.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- Tests + lint (includes the SSRF and admin-authorization tests) ---
+  test:
+    name: Tests & lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Install backend + fetcher dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r services/backend/requirements-dev.txt
+          pip install -r services/fetcher/requirements-dev.txt
+      - name: Ruff lint
+        run: |
+          ruff check services/backend
+          ruff check services/fetcher
+      - name: Backend tests
+        working-directory: services/backend
+        run: pytest -q
+      - name: Fetcher tests
+        working-directory: services/fetcher
+        run: pytest -q
+
+  # --- Secret scanning (gitleaks) ---
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0  # full history so gitleaks scans all commits
+      - uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # --- SAST (Semgrep) → SARIF to code scanning ---
+  # Runs in the official Semgrep image (bundles its own runtime, avoids pip/setuptools issues).
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.97.0
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Semgrep scan
+        run: |
+          semgrep scan \
+            --config p/python --config p/security-audit --config p/secrets \
+            --sarif --output semgrep.sarif --error
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # --- SCA: Python dependency audit (pip-audit) ---
+  sca-pip-audit:
+    name: SCA (pip-audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit==2.7.3
+      - run: pip-audit -r services/backend/requirements.txt
+      - run: pip-audit -r services/fetcher/requirements.txt
+
+  # --- SCA: Trivy filesystem scan → SARIF ---
+  sca-trivy-fs:
+    name: SCA (Trivy fs)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: sarif
+          output: trivy-fs.sarif
+          trivyignores: .trivyignore
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  # --- Dockerfile linting (Hadolint) → SARIF, per service ---
+  dockerfile-lint:
+    name: Dockerfile lint (Hadolint)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, fetcher]
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: services/${{ matrix.service }}/Dockerfile
+          failure-threshold: error
+          format: sarif
+          output-file: hadolint-${{ matrix.service }}.sarif
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: hadolint-${{ matrix.service }}.sarif
+          category: hadolint-${{ matrix.service }}
+
+  # --- Container image build + scan (Trivy image) → SARIF, per service ---
+  image-scan:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, fetcher]
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Build image
+        run: docker build -t breachatlas-${{ matrix.service }}:ci services/${{ matrix.service }}
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: breachatlas-${{ matrix.service }}:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: sarif
+          output: trivy-image-${{ matrix.service }}.sarif
+          trivyignores: .trivyignore
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: trivy-image-${{ matrix.service }}.sarif
+          category: trivy-image-${{ matrix.service }}
+
+  # --- SBOM generation (Syft) → build artifact, per service ---
+  sbom:
+    name: SBOM (Syft)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        service: [backend, fetcher]
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.17.8
+        with:
+          path: services/${{ matrix.service }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+      - uses: actions/upload-artifact@v4.4.3
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.spdx.json
+
+  # --- SCA: npm audit (activates once the frontend exists, Phase 6) ---
+  npm-audit:
+    name: SCA (npm audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: hashFiles('services/frontend/package-lock.json') != ''
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: "20"
+      - working-directory: services/frontend
+        run: npm audit --audit-level=high
+
+  # --- IaC scanning: Checkov on Terraform (activates in Phase 7) ---
+  iac-checkov:
+    name: IaC scan (Checkov)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    if: hashFiles('infra/terraform/**/*.tf') != ''
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: bridgecrewio/checkov-action@v12.2993.0
+        with:
+          directory: infra/terraform
+          output_format: sarif
+          output_file_path: checkov.sarif
+          soft_fail: false
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: checkov.sarif
+          category: checkov

@@ -1,0 +1,16 @@
+# Gitleaks config. Extends the default rule set and adds a narrow allowlist for
+# known, non-secret demo values. Document every allowlist entry (false-positive policy:
+# see docs/security-scanning.md).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Demo/example values that are not real secrets"
+paths = [
+  '''\.env\.example$''',          # placeholder values only
+  '''services/backend/tests/.*''',  # test-only fixtures (e.g. a well-known throwaway password)
+]
+regexes = [
+  '''change_me_locally''',        # placeholder password in .env.example
+  '''correct-horse-battery-staple''',  # test-only password
+]

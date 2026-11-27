@@ -1,0 +1,4 @@
+# Trivy ignore file — suppress specific, reviewed false positives by CVE id.
+# Every entry MUST have a justification + date (false-positive policy: docs/security-scanning.md).
+# Example:
+# CVE-2024-XXXXX  # not reachable: <reason> (reviewed 2026-11-27)

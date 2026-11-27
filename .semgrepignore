@@ -1,0 +1,7 @@
+# Paths Semgrep should not scan.
+.venv/
+**/.venv/
+**/__pycache__/
+services/backend/alembic/versions/
+data/reference/
+**/node_modules/
