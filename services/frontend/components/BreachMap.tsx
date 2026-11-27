@@ -1,19 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BreachDetail } from "@/lib/api";
 
-type Node = { id: string; label: string; sub?: string; x: number; y: number; col: 0 | 1 | 2 };
+type Kind = "technique" | "breach" | "control";
+type Node = {
+  id: string;
+  kind: Kind;
+  key: string; // slug (breach/control) or technique id
+  url?: string | null; // external link for techniques
+  label: string;
+  sub?: string;
+  x: number;
+  y: number;
+  col: 0 | 1 | 2;
+};
 type Link = { a: string; b: string };
 
 const W = 960;
 const H = 480;
-const COL_X = [150, 480, 810];
+// Column x-positions: techniques (left), breaches (centre), controls (right).
+// The right column is pulled in from the edge so long control labels
+// ("Multi-Factor Authentication") have room before the viewBox edge.
+const COL_X = [140, 450, 720];
 
 function layout(breaches: BreachDetail[]) {
   const techIds = new Set<string>();
   const ctrlIds = new Set<string>();
   const techName: Record<string, string> = {};
+  const techUrl: Record<string, string | null> = {};
   const ctrlName: Record<string, string> = {};
   const links: Link[] = [];
 
@@ -22,6 +38,7 @@ function layout(breaches: BreachDetail[]) {
       for (const t of step.techniques) {
         techIds.add(t.technique_id);
         techName[t.technique_id] = t.name;
+        techUrl[t.technique_id] = t.url ?? null;
         links.push({ a: `t:${t.technique_id}`, b: `b:${b.slug}` });
       }
     }
@@ -40,12 +57,39 @@ function layout(breaches: BreachDetail[]) {
     });
 
   const nodes: Node[] = [
-    ...place([...techIds], 0, (id) => ({ id: `t:${id}`, label: id, sub: techName[id], x: 0, y: 0, col: 0 })),
+    ...place([...techIds], 0, (id) => ({
+      id: `t:${id}`,
+      kind: "technique",
+      key: id,
+      url: techUrl[id],
+      label: id,
+      sub: techName[id],
+      x: 0,
+      y: 0,
+      col: 0,
+    })),
     ...place(breaches.map((b) => b.slug), 1, (slug) => {
       const b = breaches.find((x) => x.slug === slug)!;
-      return { id: `b:${slug}`, label: b.organization.replace(/\s*\(fictional\)/i, ""), sub: b.sector, x: 0, y: 0, col: 1 };
+      return {
+        id: `b:${slug}`,
+        kind: "breach",
+        key: slug,
+        label: b.organization.replace(/\s*\(fictional\)/i, ""),
+        sub: b.sector,
+        x: 0,
+        y: 0,
+        col: 1,
+      };
     }),
-    ...place([...ctrlIds], 2, (id) => ({ id: `c:${id}`, label: ctrlName[id], x: 0, y: 0, col: 2 })),
+    ...place([...ctrlIds], 2, (id) => ({
+      id: `c:${id}`,
+      kind: "control",
+      key: id,
+      label: ctrlName[id],
+      x: 0,
+      y: 0,
+      col: 2,
+    })),
   ];
 
   const byId: Record<string, Node> = Object.fromEntries(nodes.map((n) => [n.id, n]));
@@ -53,6 +97,7 @@ function layout(breaches: BreachDetail[]) {
 }
 
 export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
+  const router = useRouter();
   const { nodes, links, byId } = useMemo(() => layout(breaches), [breaches]);
   const [hover, setHover] = useState<string | null>(null);
 
@@ -67,7 +112,19 @@ export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
   }, [hover, links]);
 
   const isDim = (id: string) => (connected ? !connected.has(id) : false);
-  const linkActive = (l: Link) => connected && (connected.has(l.a) && connected.has(l.b));
+  const linkActive = (l: Link) => connected && connected.has(l.a) && connected.has(l.b);
+
+  const navigate = (n: Node) => {
+    if (n.kind === "breach") router.push(`/breach/${n.key}`);
+    else if (n.kind === "control") router.push(`/control/${n.key}`);
+    else if (n.url) window.open(n.url, "_blank", "noopener,noreferrer");
+    else
+      window.open(
+        `https://attack.mitre.org/techniques/${n.key}/`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+  };
 
   return (
     <div className="w-full">
@@ -104,9 +161,17 @@ export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
               key={n.id}
               onMouseEnter={() => setHover(n.id)}
               onMouseLeave={() => setHover(null)}
+              onClick={() => navigate(n)}
+              role="link"
+              aria-label={n.label}
               style={{ cursor: "pointer", opacity: dim ? 0.3 : 1, transition: "opacity .15s" }}
             >
-              <circle cx={n.x} cy={n.y} r={active ? 4.5 : 3} fill={active || (connected && !dim) ? "var(--color-accent)" : "var(--color-muted)"} />
+              <circle
+                cx={n.x}
+                cy={n.y}
+                r={active ? 4.5 : 3}
+                fill={active || (connected && !dim) ? "var(--color-accent)" : "var(--color-muted)"}
+              />
               <text
                 x={n.x + dx}
                 y={n.y + (n.col === 1 ? -8 : 3.5)}
@@ -114,11 +179,19 @@ export default function BreachMap({ breaches }: { breaches: BreachDetail[] }) {
                 className={n.col === 0 ? "font-mono" : ""}
                 fontSize={n.col === 0 ? 11 : 12}
                 fill={active ? "var(--color-ink)" : "var(--color-muted)"}
+                style={{ textDecoration: active ? "underline" : "none" }}
               >
                 {n.label}
               </text>
               {n.col === 1 && n.sub && (
-                <text x={n.x} y={n.y + 14} textAnchor="middle" className="font-mono" fontSize={9} fill="var(--color-faint)">
+                <text
+                  x={n.x}
+                  y={n.y + 14}
+                  textAnchor="middle"
+                  className="font-mono"
+                  fontSize={9}
+                  fill="var(--color-faint)"
+                >
                   {n.sub.toLowerCase()}
                 </text>
               )}
