@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* BreachAtlas theme — warm near-black, cream ink, one restrained accent. */
+@theme {
+  --color-bg: #13120e;
+  --color-surface: #191813;
+  --color-ink: #ece7dd;
+  --color-muted: #948e82;
+  --color-faint: #6b6559;
+  --color-line: #262420;
+  --color-line-strong: #332f28;
+  --color-accent: #cba35c;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Thin, quiet focus ring for keyboard users. */
+:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+/* Corner registration marks, used on the hero frame. */
+.reg-mark::before,
+.reg-mark::after {
+  content: "+";
+  position: absolute;
+  color: var(--color-faint);
+  font-size: 14px;
+  line-height: 1;
+}
