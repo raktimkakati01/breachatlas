@@ -1,10 +1,10 @@
 # BreachAtlas frontend image. Multi-stage Next.js standalone build, non-root.
-FROM node:22.12.0-alpine AS deps
+FROM node:26.13.1-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:22.12.0-alpine AS build
+FROM node:26.13.1-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -15,7 +15,7 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
-FROM node:22.12.0-alpine AS runner
+FROM node:26.13.1-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
