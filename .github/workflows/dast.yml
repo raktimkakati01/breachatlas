@@ -1,0 +1,92 @@
+name: DAST
+
+# Dynamic Application Security Testing: stand the API up for real and attack it
+# with OWASP ZAP. Kept in its own workflow (not the fast PR gate) because a live
+# scan takes minutes. Runs on pushes to main, weekly, and on demand.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: sqlite+pysqlite:///./dast.db
+      APP_ENV: ci
+      # Lift the public rate limit for the scan so ZAP isn't throttled into 429s.
+      API_RATE_LIMIT: "1000000"
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: services/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Migrate + seed demo data (SQLite)
+        working-directory: services/backend
+        run: |
+          alembic upgrade head
+          python -m app.db.seed
+
+      - name: Start the API
+        working-directory: services/backend
+        run: |
+          nohup python -m uvicorn app.main:app \
+            --host 0.0.0.0 --port 8000 --log-level warning > uvicorn.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/api/v1/health >/dev/null; then
+              echo "API is up"; break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:8000/api/v1/health \
+            || { echo "API failed to start"; cat uvicorn.log; exit 1; }
+
+      - name: OWASP ZAP API scan (report-only)
+        run: |
+          mkdir -p zap-out && chmod 0777 zap-out
+          cp .zap/rules.tsv zap-out/rules.tsv
+          # --network host so the ZAP container reaches the API on localhost:8000.
+          # -I: informational warnings do not fail the run. `|| true`: this is a
+          # baseline DAST report, not yet a hard gate (see docs/dast.md to promote).
+          docker run --network host -v "$PWD/zap-out:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+              -t http://localhost:8000/openapi.json -f openapi \
+              -c rules.tsv \
+              -r report.html -J report.json -w report.md \
+              -I || true
+
+      - name: Summarise findings
+        if: always()
+        run: |
+          if [ -f zap-out/report.md ]; then
+            echo "## OWASP ZAP DAST report" >> "$GITHUB_STEP_SUMMARY"
+            cat zap-out/report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No ZAP report produced (scan did not complete)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: zap-dast-report
+          path: zap-out/

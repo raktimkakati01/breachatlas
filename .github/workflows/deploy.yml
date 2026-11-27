@@ -1,0 +1,85 @@
+name: Deploy (manual)
+
+# Continuous delivery TEMPLATE. It never runs automatically — only by manual
+# dispatch — and does nothing until these are configured in the repo:
+#   - secret  AWS_DEPLOY_ROLE_ARN : an IAM role trusting this repo via GitHub OIDC
+#   - (remote Terraform state in infra/terraform/versions.tf, uncommented)
+#
+# Dispatching with confirm != "DEPLOY" runs `terraform plan` only (safe, free-ish).
+# confirm == "DEPLOY" builds/pushes images and runs `terraform apply`, which
+# creates/updates REAL, BILLABLE AWS resources (~$90-110/mo). That is a
+# deliberate human action, never automated.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to build, push, and apply (billable). Anything else = plan only.'
+        required: true
+        default: "plan-only"
+
+permissions: {}
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: demo
+  NAME_PREFIX: breachatlas
+
+jobs:
+  deploy:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # assume the AWS role via OIDC — no long-lived keys in GitHub
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+
+      - name: Build and push images (only on confirmed deploy)
+        if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          declare -A ctx=( [backend]=services/backend [fetcher]=services/fetcher [frontend]=services/frontend )
+          for svc in backend fetcher frontend; do
+            repo="$REGISTRY/${NAME_PREFIX}-${ENVIRONMENT}/$svc"
+            echo "Building $repo:$TAG"
+            docker build -t "$repo:$TAG" "${ctx[$svc]}"
+            docker push "$repo:$TAG"
+          done
+
+      - uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform init
+        working-directory: infra/terraform
+        run: terraform init
+
+      - name: Terraform plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_backend_image_tag: ${{ github.sha }}
+          TF_VAR_fetcher_image_tag: ${{ github.sha }}
+          TF_VAR_frontend_image_tag: ${{ github.sha }}
+        run: terraform plan -no-color
+
+      - name: Terraform apply (only on confirmed deploy)
+        if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+        working-directory: infra/terraform
+        env:
+          TF_VAR_backend_image_tag: ${{ github.sha }}
+          TF_VAR_fetcher_image_tag: ${{ github.sha }}
+          TF_VAR_frontend_image_tag: ${{ github.sha }}
+        run: terraform apply -auto-approve -no-color

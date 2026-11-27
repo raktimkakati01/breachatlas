@@ -17,10 +17,13 @@ scanning as **SARIF** where supported.
 | Container scan | Trivy `image` | Vulns in built backend/fetcher images | HIGH/CRITICAL → exit 1, SARIF |
 | SBOM | Syft | Software bill of materials (SPDX) per service | Uploaded as build artifact |
 | Tests | pytest | Unit/integration — **incl. SSRF guard + admin authorization** | Fail on any failure |
-| IaC scan | Checkov | Terraform misconfig | Added in Phase 7 (when `infra/terraform` exists) |
-| SCA (npm) | `npm audit` | Frontend dep vulns | Added in Phase 6 (when `services/frontend` exists) |
+| IaC scan | Checkov | Terraform misconfig | Fail on failed policy → SARIF (16 documented skips) |
+| DAST | OWASP ZAP (`zap-api-scan`) | Runtime vulns on the **live** API (OpenAPI-driven) | Report-only baseline → HTML/JSON/MD artifact (`.github/workflows/dast.yml`) |
+| SCA (npm) | `npm audit` | Frontend dep vulns | Added in Phase 9 (dependency hardening) |
 
-Image signing (Cosign keyless) and DAST (OWASP ZAP) are deferred to later phases (9 and 8).
+DAST runs in its own `dast.yml` workflow (on push to `main`, weekly, and on demand) rather than
+the fast PR gate, because a live scan takes minutes — see `docs/dast.md`. Image signing (Cosign
+keyless) is deferred to Phase 9.
 
 ## Handling false positives
 

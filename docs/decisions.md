@@ -291,6 +291,34 @@ someone deliberately runs `terraform apply`. Everything that proves it is correc
 
 ---
 
+## ADR-0014 — DAST with OWASP ZAP + a manual, OIDC-gated deploy pipeline
+
+**Date:** 2026-11-27 · **Status:** Accepted · **Phase:** 8
+
+Phase 8 adds the two runtime pieces: a dynamic security scan of the live app, and the delivery
+path that would put it in AWS. Neither costs anything in normal operation.
+
+- **DAST (`.github/workflows/dast.yml`):** stands the API up for real (SQLite + migrations + demo
+  seed + uvicorn) and runs **OWASP ZAP** `zap-api-scan` against the live `/openapi.json`, so every
+  endpoint is exercised. It lives in its **own workflow** (push to `main`, weekly, on demand) — not
+  the PR gate — because a live scan takes minutes. Report-only to start (`-I || true`): it produces
+  an HTML/JSON/Markdown artifact and a job summary, with a documented path to promote it to a hard
+  gate once triaged. Noise is tuned narrowly in `.zap/rules.tsv` (3 IGNOREs, each with a reason).
+  See `docs/dast.md`.
+- **The app already passes the obvious checks.** The backend sets secure headers on every response
+  (nosniff, frame-deny, strict CSP, Referrer-Policy, COOP, Permissions-Policy), the public API is
+  read-only + rate-limited, and admin routes require auth — so ZAP mostly confirms the posture.
+- **Deploy (`.github/workflows/deploy.yml`):** a **manual-only** CD template. It authenticates with
+  **GitHub OIDC** (`AWS_DEPLOY_ROLE_ARN`) — no long-lived AWS keys in GitHub — builds/pushes the
+  three images to ECR, runs `terraform plan` by default, and `terraform apply` **only** when
+  dispatched with `confirm = DEPLOY`. It never runs automatically and does nothing until the role
+  secret + remote state are configured, so standing up billable AWS is always a deliberate human
+  action.
+- **Frontend is now containerised** (`services/frontend/Dockerfile`, Next.js standalone output,
+  non-root) so all three services are deployable, matching the ECS task definitions from ADR-0013.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**
