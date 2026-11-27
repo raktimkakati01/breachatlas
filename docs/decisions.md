@@ -227,6 +227,31 @@ all behind the isolated SSRF fetcher, all filing candidates into the review queu
 
 ---
 
+## ADR-0012 — CI/CD security scanning pipeline (no cloud)
+
+**Date:** 2026-11-27 · **Status:** Accepted · **Phase:** 5
+
+A single `.github/workflows/ci.yml` runs the security gates on every push/PR; `docs/security-scanning.md`
+has the full stage table and false-positive policy.
+
+- **Least privilege:** top-level `permissions: {}`; each job grants only `contents: read` and, where
+  it uploads SARIF, `security-events: write`. Actions are **pinned to specific versions**.
+- **Gates fail on HIGH/CRITICAL:** gitleaks (secrets), Semgrep (SAST), pip-audit + Trivy fs (SCA),
+  Hadolint (Dockerfiles), Trivy image (containers); Syft produces SBOM artifacts; tests (incl. the
+  SSRF + admin-authz tests) must pass. Results go to GitHub code scanning as SARIF.
+- **Pre-commit** (`.pre-commit-config.yaml`) runs gitleaks, ruff, Hadolint and hygiene hooks locally.
+- **Deferred by design:** Checkov (Terraform) and npm audit (frontend) jobs are guarded by
+  `hashFiles` and self-activate in Phases 7 and 6; Cosign signing (Phase 9) and ZAP DAST (Phase 8)
+  come later.
+- **Semgrep runs in its official container** (its pip install breaks on setuptools ≥81, which dropped
+  `pkg_resources`).
+
+**The pipeline proved itself immediately:** pip-audit caught 7 real CVEs in `starlette` 0.41.3 (via
+FastAPI). We **upgraded** the web stack (FastAPI 0.165, Starlette 1.10, Uvicorn 0.54, Pydantic 2.14,
+pytest 9.0.3) rather than suppressing; all tests stayed green and the SCA scans are now clean.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**

@@ -132,6 +132,22 @@ FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
 All five Phase 4 connectors are complete; a live news-RSS feed list is configured per deployment
 (`NEWS_RSS_FEEDS`) after each feed's terms are reviewed.
 
+### CI/CD security pipeline (Phase 5)
+
+Every push/PR runs `.github/workflows/ci.yml` — least-privilege jobs, pinned actions, fail on
+HIGH/CRITICAL, SARIF to GitHub code scanning:
+
+**gitleaks** (secrets) · **Semgrep** (SAST) · **pip-audit + Trivy fs** (SCA) · **Hadolint**
+(Dockerfiles) · **Trivy image** (containers) · **Syft** (SBOM) · **pytest** (incl. SSRF + admin-authz
+tests). Pre-commit hooks mirror the fast checks locally. Checkov (Terraform) and npm audit (frontend)
+self-activate in later phases.
+
+Full stage table + false-positive policy: [`docs/security-scanning.md`](docs/security-scanning.md).
+
+```bash
+pipx install pre-commit && pre-commit install   # local hooks
+```
+
 ## Repository layout
 
 ```
