@@ -109,6 +109,7 @@ jobs:
           scan-type: fs
           scanners: vuln,misconfig,secret
           severity: HIGH,CRITICAL
+          ignore-unfixed: true  # fail only on actionable (fixable) findings
           exit-code: "1"
           format: sarif
           output: trivy-fs.sarif
@@ -167,6 +168,7 @@ jobs:
           scan-type: image
           image-ref: breachatlas-${{ matrix.service }}:ci
           severity: HIGH,CRITICAL
+          ignore-unfixed: true  # unfixable base-image OS CVEs don't fail the build
           exit-code: "1"
           format: sarif
           output: trivy-image-${{ matrix.service }}.sarif
