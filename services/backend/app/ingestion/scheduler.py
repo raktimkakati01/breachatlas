@@ -12,6 +12,7 @@ from app.ingestion.connectors.edgar import SecEdgarConnector
 from app.ingestion.connectors.hhs import HhsOcrConnector
 from app.ingestion.connectors.ico import IcoConnector
 from app.ingestion.connectors.maine import MaineAgConnector
+from app.ingestion.connectors.news_rss import NewsRssConnector
 from app.ingestion.fetch_client import http_fetch
 from app.ingestion.pipeline import ingest
 
@@ -58,6 +59,16 @@ def run_uk_ico() -> dict[str, int]:
         db.close()
 
 
+def run_news_rss() -> dict[str, int]:
+    db = SessionLocal()
+    try:
+        result = ingest(db, NewsRssConnector(), http_fetch)
+        log.info("news_rss ingest: %s", result)
+        return result
+    finally:
+        db.close()
+
+
 def build_scheduler() -> BlockingScheduler:
     scheduler = BlockingScheduler(timezone="UTC")
     scheduler.add_job(
@@ -89,6 +100,14 @@ def build_scheduler() -> BlockingScheduler:
         "interval",
         hours=settings.ICO_INTERVAL_HOURS,
         id="uk_ico",
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        run_news_rss,
+        "interval",
+        hours=settings.NEWS_INTERVAL_HOURS,
+        id="news_rss",
         max_instances=1,
         coalesce=True,
     )

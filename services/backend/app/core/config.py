@@ -34,10 +34,17 @@ class Settings(BaseSettings):
     HHS_INTERVAL_HOURS: int = 24
     MAINE_INTERVAL_HOURS: int = 24
     ICO_INTERVAL_HOURS: int = 24
+    # Comma-separated security-news RSS feeds. Empty until each feed's ToU is checked.
+    NEWS_RSS_FEEDS: str = ""
+    NEWS_INTERVAL_HOURS: int = 6
 
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def news_rss_feeds(self) -> list[str]:
+        return [f.strip() for f in self.NEWS_RSS_FEEDS.split(",") if f.strip()]
 
     @property
     def cookie_secure(self) -> bool:

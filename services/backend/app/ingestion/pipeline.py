@@ -17,7 +17,10 @@ from app.ingestion.connectors.base import Connector, Fetch
 from app.ingestion.dedup import find_duplicate
 from app.ingestion.extractor import ExtractedBreach, Extractor
 from app.models import Breach, ChangeLog, Provenance, Source
-from app.models.enums import ConfidenceLabel, ReviewStatus, RootCauseStatus
+from app.models.enums import ConfidenceLabel, ReviewStatus, RootCauseStatus, SourceType
+
+# Sources that assert facts officially (vs. news, which only produces leads).
+_OFFICIAL_SOURCES = {SourceType.official, SourceType.regulator, SourceType.filing}
 
 
 def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) -> Breach:
@@ -53,9 +56,11 @@ def _create_candidate(db: Session, connector_name: str, ext: ExtractedBreach) ->
     db.add(breach)
     db.flush()  # assign breach.id for provenance
 
+    is_official = ext.source_type in _OFFICIAL_SOURCES
     provenance = {
-        "organization": ConfidenceLabel.confirmed,
-        "date_disclosed": ConfidenceLabel.confirmed,
+        # Official/regulator/filing state facts; news is only a lead to be confirmed.
+        "organization": ConfidenceLabel.confirmed if is_official else ConfidenceLabel.analysis,
+        "date_disclosed": ConfidenceLabel.confirmed if is_official else ConfidenceLabel.reported,
         "country": ConfidenceLabel.analysis,
         "root_cause_status": ConfidenceLabel.undisclosed,
         "records_affected": (

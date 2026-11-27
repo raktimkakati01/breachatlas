@@ -212,3 +212,72 @@ class IcoExtractor:
             confirmation_status=ConfirmationStatus.confirmed,  # official regulator action
             country="United Kingdom",
         )
+
+
+# --- News RSS discovery (leads only) ---
+
+# A headline must look breach-related to become a lead at all.
+_BREACH_RE = re.compile(
+    r"\b(data breach|breach|hacked|hack|ransomware|leak\w*|exposed|"
+    r"cyber\s*attack|stolen|compromised|exfiltrat\w*)\b",
+    re.IGNORECASE,
+)
+# Split the org (headline prefix) off the verb/keyword that follows it.
+_SPLIT_RE = re.compile(
+    r"\b(confirms?|suffers?|discloses?|reports?|announces?|hit by|victim of|says|"
+    r"data breach|breach|hacked|ransomware|leak\w*|exposed|cyber\s*attack)\b",
+    re.IGNORECASE,
+)
+
+
+def _parse_feed_date(value: str) -> date | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    from email.utils import parsedate_to_datetime
+
+    try:
+        return parsedate_to_datetime(value).date()  # RSS RFC-822 pubDate
+    except (TypeError, ValueError):
+        pass
+    try:
+        from datetime import datetime
+
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()  # Atom ISO-8601
+    except ValueError:
+        return None
+
+
+class NewsRssExtractor:
+    """Turns a security-news RSS/Atom item into a LEAD (never a confirmed fact).
+
+    News is only used to surface candidates for human investigation — the reviewer confirms the
+    organization and adds authoritative sources before anything is published. Root cause is never
+    taken from news (it stays Undisclosed).
+    """
+
+    def extract(self, raw: dict) -> ExtractedBreach | None:
+        title = (raw.get("title") or "").strip()
+        if not title or not _BREACH_RE.search(title):
+            return None  # not breach-related → not a lead
+
+        disclosed = _parse_feed_date(raw.get("published", ""))
+        if disclosed is None:
+            return None
+
+        match = _SPLIT_RE.search(title)
+        organization = (
+            title[: match.start()].strip(" :–-") if match and match.start() > 0 else title
+        )
+        organization = re.sub(r"\s+", " ", organization)[:255] or title[:255]
+
+        return ExtractedBreach(
+            organization=organization,
+            date_disclosed=disclosed,
+            source_url=(raw.get("link") or "").strip() or "about:blank",
+            source_title=title[:500],
+            source_publisher=(raw.get("source") or "News RSS").strip(),
+            source_type=SourceType.news,
+            confirmation_status=ConfirmationStatus.unconfirmed,  # a lead, not a confirmation
+            country="Unknown",
+        )

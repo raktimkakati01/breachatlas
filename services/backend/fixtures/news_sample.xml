@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DEMO fixture: RSS 2.0 feed with fictional headlines for ingestion tests. -->
+<rss version="2.0">
+  <channel>
+    <title>Example Security News</title>
+    <link>https://news.example.test/</link>
+    <description>Demo feed</description>
+    <item>
+      <title>Example Payments Ltd confirms data breach affecting 2 million customers</title>
+      <link>https://news.example.test/example-payments-breach</link>
+      <pubDate>Wed, 11 Sep 2024 10:00:00 GMT</pubDate>
+      <description>Fictional breach report.</description>
+    </item>
+    <item>
+      <title>Globex Corp hit by ransomware, systems offline</title>
+      <link>https://news.example.test/globex-ransomware</link>
+      <pubDate>Mon, 02 Sep 2024 08:30:00 GMT</pubDate>
+      <description>Fictional ransomware report.</description>
+    </item>
+    <item>
+      <title>Conference announces 2024 keynote speakers</title>
+      <link>https://news.example.test/keynote</link>
+      <pubDate>Tue, 20 Aug 2024 12:00:00 GMT</pubDate>
+      <description>Not a breach — should be ignored.</description>
+    </item>
+  </channel>
+</rss>
