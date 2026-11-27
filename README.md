@@ -119,6 +119,8 @@ Ingestion is split for safety:
     counts).
   - **UK ICO** — Information Commissioner's Office enforcement actions (HTML list, parsed with
     BeautifulSoup; first non-US source).
+  - **News RSS** — security-news feeds, parsed with `defusedxml` (XXE-safe), producing
+    **unconfirmed leads only** for human review (never a confirmed fact or a root-cause source).
 
 All are built/tested against recorded fixtures; a live SEC pass is opt-in:
 
@@ -127,7 +129,8 @@ All are built/tested against recorded fixtures; a live SEC pass is opt-in:
 FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
 ```
 
-A news-RSS discovery connector (leads only) follows in a later Phase 4 iteration.
+All five Phase 4 connectors are complete; a live news-RSS feed list is configured per deployment
+(`NEWS_RSS_FEEDS`) after each feed's terms are reviewed.
 
 ## Repository layout
 

@@ -205,6 +205,28 @@ fetcher through an egress allowlist proxy.
 
 ---
 
+## ADR-0011 — News RSS is leads-only; provenance by source type; safe XML
+
+**Date:** 2026-11-27 · **Status:** Accepted · **Phase:** 4
+
+- **News is never a confirmed fact.** The RSS connector produces **leads**: `confirmation_status
+  = unconfirmed`, `source_type = news`, and the organization is a *heuristic* parse of the
+  headline. A reviewer confirms the org and adds authoritative sources before publishing. Root
+  cause is never taken from news (stays Undisclosed), honoring "never the sole source for root
+  cause."
+- **Provenance now depends on the source.** Official / regulator / filing sources label
+  `organization` and `date_disclosed` **Confirmed**; news labels them **Analysis** / **Reported**.
+  So the per-field trust labels reflect where each value actually came from.
+- **Untrusted XML is parsed with `defusedxml`**, not stdlib ElementTree, to block XXE and
+  entity-expansion (billion-laughs) attacks from hostile feeds. A test asserts the rejection.
+- **Feeds are configured per deployment** (`NEWS_RSS_FEEDS`, empty by default) so each feed's ToU
+  is checked before it is enabled.
+
+This completes Phase 4's ingestion connectors: SEC EDGAR, HHS OCR, Maine AG, UK ICO, News RSS —
+all behind the isolated SSRF fetcher, all filing candidates into the review queue.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**
@@ -241,4 +263,6 @@ fetcher through an egress allowlist proxy.
   ICO content is Crown copyright, generally reusable under the Open Government Licence; we store
   only metadata + our own summaries regardless. Not every enforcement action is a data breach, so
   entries are leads for human review. Permitted for this use.
-- **News RSS (leads only)** — _pending Phase 4._
+- **News RSS (leads only)** — _checked 2026-11-27._ RSS/Atom is syndication content; each feed's
+  own ToU must be reviewed before it is added to `NEWS_RSS_FEEDS` (empty by default). Used only to
+  create unconfirmed leads, never as the sole source for root cause. XML parsed with `defusedxml`.
