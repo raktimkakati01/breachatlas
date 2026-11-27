@@ -89,12 +89,13 @@ class EdgarExtractor:
 # --- HHS OCR breach portal ---
 
 
-def _parse_hhs_date(value: str) -> date | None:
-    value = (value or "").strip()
-    for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
-        try:
-            from datetime import datetime
+def _parse_date(value: str) -> date | None:
+    """Parse the date formats seen across sources (US m/d/Y, ISO, UK '12 September 2024')."""
+    from datetime import datetime
 
+    value = (value or "").strip()
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d, %Y"):
+        try:
             return datetime.strptime(value, fmt).date()
         except ValueError:
             continue
@@ -106,7 +107,7 @@ class HhsExtractor:
 
     def extract(self, raw: dict) -> ExtractedBreach | None:
         name = (raw.get("Name of Covered Entity") or "").strip()
-        disclosed = _parse_hhs_date(raw.get("Breach Submission Date", ""))
+        disclosed = _parse_date(raw.get("Breach Submission Date", ""))
         if not name or disclosed is None:
             return None
 
@@ -156,7 +157,7 @@ class MaineAgExtractor:
 
     def extract(self, raw: dict) -> ExtractedBreach | None:
         name = _first_nonempty(raw, self._NAME_KEYS)
-        disclosed = _parse_hhs_date(_first_nonempty(raw, self._DATE_KEYS) or "")
+        disclosed = _parse_date(_first_nonempty(raw, self._DATE_KEYS) or "")
         if not name or disclosed is None:
             return None
 
@@ -174,4 +175,40 @@ class MaineAgExtractor:
             country="United States",
             records_affected=records,
             confident_fields=["records_affected"] if records is not None else [],
+        )
+
+
+# --- UK ICO enforcement actions ---
+
+
+class IcoExtractor:
+    """Maps a parsed UK ICO enforcement-list entry into a candidate.
+
+    The connector parses the enforcement page HTML into {organization, date, type, url} dicts;
+    this extractor normalizes them. ICO actions are leads — reviewers confirm relevance, since
+    not every enforcement action is a personal-data breach.
+    """
+
+    def extract(self, raw: dict) -> ExtractedBreach | None:
+        organization = (raw.get("organization") or "").strip()
+        disclosed = _parse_date(raw.get("date") or "")
+        if not organization or disclosed is None:
+            return None
+
+        url = (raw.get("url") or "").strip()
+        if url.startswith("/"):
+            url = "https://ico.org.uk" + url
+        if not url:
+            url = "https://ico.org.uk/action-weve-taken/enforcement/"
+        action_type = (raw.get("type") or "Enforcement action").strip()
+
+        return ExtractedBreach(
+            organization=organization,
+            date_disclosed=disclosed,
+            source_url=url,
+            source_title=f"ICO: {action_type}",
+            source_publisher="UK ICO",
+            source_type=SourceType.regulator,
+            confirmation_status=ConfirmationStatus.confirmed,  # official regulator action
+            country="United Kingdom",
         )

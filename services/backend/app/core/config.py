@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     EDGAR_INTERVAL_HOURS: int = 24
     HHS_INTERVAL_HOURS: int = 24
     MAINE_INTERVAL_HOURS: int = 24
+    ICO_INTERVAL_HOURS: int = 24
 
     @property
     def cors_origins(self) -> list[str]:
