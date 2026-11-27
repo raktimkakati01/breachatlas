@@ -43,6 +43,7 @@ def test_security_headers_present(client):
     r = client.get("/api/v1/health")
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["X-Frame-Options"] == "DENY"
+    assert r.headers["Cross-Origin-Resource-Policy"] == "same-origin"
     assert "Content-Security-Policy" in r.headers
     assert "default-src 'none'" in r.headers["Content-Security-Policy"]
 

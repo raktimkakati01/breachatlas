@@ -55,6 +55,9 @@ async def security_headers(
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    # Prevent other origins from embedding our API responses as a resource
+    # (flagged by the OWASP ZAP DAST scan, rule 90004).
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
     response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
     # A locked-down CSP for API responses; docs UIs need inline scripts so are exempted.
     if not request.url.path.startswith(_DOCS_PATHS):
