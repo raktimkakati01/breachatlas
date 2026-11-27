@@ -36,10 +36,10 @@ jobs:
           ruff check services/fetcher
       - name: Backend tests
         working-directory: services/backend
-        run: pytest -q
+        run: python -m pytest -q
       - name: Fetcher tests
         working-directory: services/fetcher
-        run: pytest -q
+        run: python -m pytest -q  # `python -m` puts cwd on sys.path so `import app` resolves
 
   # --- Secret scanning (gitleaks) ---
   secret-scan:
@@ -103,17 +103,13 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4.2.2
+      - name: Install Trivy
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/contrib/install.sh | sh -s -- -b /usr/local/bin v0.70.0
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          scan-type: fs
-          scanners: vuln,misconfig,secret
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true  # fail only on actionable (fixable) findings
-          exit-code: "1"
-          format: sarif
-          output: trivy-fs.sarif
-          trivyignores: .trivyignore
+        run: |
+          trivy fs --severity HIGH,CRITICAL --ignore-unfixed \
+            --scanners vuln,secret --exit-code 1 \
+            --format sarif --output trivy-fs.sarif .
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3.27.5
@@ -162,17 +158,14 @@ jobs:
       - uses: actions/checkout@v4.2.2
       - name: Build image
         run: docker build -t breachatlas-${{ matrix.service }}:ci services/${{ matrix.service }}
+      - name: Install Trivy
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/contrib/install.sh | sh -s -- -b /usr/local/bin v0.70.0
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          scan-type: image
-          image-ref: breachatlas-${{ matrix.service }}:ci
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true  # unfixable base-image OS CVEs don't fail the build
-          exit-code: "1"
-          format: sarif
-          output: trivy-image-${{ matrix.service }}.sarif
-          trivyignores: .trivyignore
+        run: |
+          trivy image --severity HIGH,CRITICAL --ignore-unfixed \
+            --scanners vuln --exit-code 1 \
+            --format sarif --output trivy-image-${{ matrix.service }}.sarif \
+            breachatlas-${{ matrix.service }}:ci
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3.27.5

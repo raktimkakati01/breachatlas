@@ -140,9 +140,9 @@ def admin_ctx() -> Iterator[SimpleNamespace]:
             s.close()
         return email
 
-    def client_for(email: str, *, password: str = _TEST_PASSWORD, totp: str | None = None):
+    def client_for(email: str, *, password: str | None = None, totp: str | None = None):
         c = TestClient(app)
-        body = {"email": email, "password": password}
+        body = {"email": email, "password": password or _TEST_PASSWORD}
         if totp is not None:
             body["totp_code"] = totp
         resp = c.post("/admin/auth/login", json=body)
