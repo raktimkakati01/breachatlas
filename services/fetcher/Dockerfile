@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Apply OS security updates so the base carries no fixable HIGH/CRITICAL CVEs.
+# hadolint ignore=DL3005
+RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system app && useradd --system --gid app --home /app app
 
 COPY requirements.txt .
