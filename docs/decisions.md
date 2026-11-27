@@ -343,6 +343,30 @@ Phase 9 hardens what goes into the artifacts and proves who built them.
 
 ---
 
+## ADR-0016 — The pipeline, mirrored in a Jenkinsfile
+
+**Date:** 2026-11-27 · **Status:** Accepted · **Phase:** 10
+
+A declarative `Jenkinsfile` at the repo root expresses the **same security gates** as
+`.github/workflows/ci.yml`, so the pipeline is portable to a Jenkins shop (a common enterprise
+requirement) — not locked to GitHub Actions.
+
+- **Same gates, same order:** tests + ruff, gitleaks, Semgrep, pip-audit, npm audit, Trivy (fs +
+  image), Hadolint, Checkov, Syft SBOMs — then a manual, gated deploy that mirrors `deploy.yml`.
+  A header comment maps each stage to its GitHub Actions job.
+- **Tools run in pinned containers** via `docker run`, so the only agent requirement is a Docker
+  daemon — nothing is installed on the controller/agent, and the tool versions stay in lockstep
+  with the Actions pipeline.
+- **Security gates run in `parallel`**; the deploy stage is guarded by `when { branch 'main' &&
+  params.DEPLOY }` plus an `input` approval and a Jenkins credential (`aws-deploy-role`), so
+  standing up billable AWS is a deliberate, human-approved action — the same posture as the
+  Actions deploy.
+- **Portfolio artifact:** it is validated for structure here; a full declarative-linter check
+  needs a running Jenkins. It demonstrates the pipeline-authoring skill without requiring a
+  Jenkins server to exist.
+
+---
+
 ## Source terms-of-use / licensing notes
 
 **Reference datasets (Phase 2):**

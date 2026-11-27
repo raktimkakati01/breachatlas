@@ -23,7 +23,11 @@ scanning as **SARIF** where supported.
 
 DAST runs in its own `dast.yml` workflow (on push to `main`, weekly, and on demand) rather than
 the fast PR gate, because a live scan takes minutes — see `docs/dast.md`. Image signing (Cosign
-keyless) is deferred to Phase 9.
+keyless, Phase 9) runs in the manual `deploy.yml`.
+
+**Portable:** the same gates are mirrored in a declarative `Jenkinsfile` at the repo root (each
+tool in its pinned container via `docker run`), so the pipeline is not locked to GitHub Actions —
+see ADR-0016.
 
 ## Handling false positives
 
