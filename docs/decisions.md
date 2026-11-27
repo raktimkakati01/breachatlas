@@ -234,5 +234,11 @@ fetcher through an egress allowlist proxy.
   rule), so live access should use appropriate headers + rate limits via the fetcher. Built/tested
   against fixtures; column headers vary over time so the extractor matches several aliases.
   Permitted for this use.
-- **UK ICO enforcement** — _pending Phase 4._
+- **UK ICO enforcement** — _checked 2026-11-27._ `robots.txt` **allows**
+  `/action-weve-taken/enforcement/` (only `/private`, `/restricted` are disallowed) with a
+  **6s crawl-delay** — our daily schedule is well within it. Enforcement actions are HTML, parsed
+  with `beautifulsoup4` (html.parser); CSS selectors may need tuning if the ICO markup changes.
+  ICO content is Crown copyright, generally reusable under the Open Government Licence; we store
+  only metadata + our own summaries regardless. Not every enforcement action is a data breach, so
+  entries are leads for human review. Permitted for this use.
 - **News RSS (leads only)** — _pending Phase 4._

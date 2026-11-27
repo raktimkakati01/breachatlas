@@ -117,6 +117,8 @@ Ingestion is split for safety:
     `records_affected` and sector).
   - **Maine AG** — Maine Attorney General breach notifications (CSV list; per-entity resident
     counts).
+  - **UK ICO** — Information Commissioner's Office enforcement actions (HTML list, parsed with
+    BeautifulSoup; first non-US source).
 
 All are built/tested against recorded fixtures; a live SEC pass is opt-in:
 
@@ -125,7 +127,7 @@ All are built/tested against recorded fixtures; a live SEC pass is opt-in:
 FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
 ```
 
-UK ICO and news-RSS connectors follow in later Phase 4 iterations.
+A news-RSS discovery connector (leads only) follows in a later Phase 4 iteration.
 
 ## Repository layout
 
