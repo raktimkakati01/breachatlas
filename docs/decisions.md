@@ -240,9 +240,9 @@ has the full stage table and false-positive policy.
   Hadolint (Dockerfiles), Trivy image (containers); Syft produces SBOM artifacts; tests (incl. the
   SSRF + admin-authz tests) must pass. Results go to GitHub code scanning as SARIF.
 - **Pre-commit** (`.pre-commit-config.yaml`) runs gitleaks, ruff, Hadolint and hygiene hooks locally.
-- **Deferred by design:** Checkov (Terraform) and npm audit (frontend) jobs are guarded by
-  `hashFiles` and self-activate in Phases 7 and 6; Cosign signing (Phase 9) and ZAP DAST (Phase 8)
-  come later.
+- **Deferred by design:** the Checkov (Terraform) and npm audit (frontend) jobs are **added in
+  Phases 7 and 6** when those files exist (`hashFiles` is not valid in a job-level `if`, so they
+  are not stubbed in now); Cosign signing (Phase 9) and ZAP DAST (Phase 8) come later.
 - **Semgrep runs in its official container** (its pip install breaks on setuptools ≥81, which dropped
   `pkg_resources`).
 

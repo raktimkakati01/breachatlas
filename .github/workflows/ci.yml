@@ -202,40 +202,6 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
 
-  # --- SCA: npm audit (activates once the frontend exists, Phase 6) ---
-  npm-audit:
-    name: SCA (npm audit)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    if: hashFiles('services/frontend/package-lock.json') != ''
-    steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.1.0
-        with:
-          node-version: "20"
-      - working-directory: services/frontend
-        run: npm audit --audit-level=high
-
-  # --- IaC scanning: Checkov on Terraform (activates in Phase 7) ---
-  iac-checkov:
-    name: IaC scan (Checkov)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    if: hashFiles('infra/terraform/**/*.tf') != ''
-    steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: bridgecrewio/checkov-action@v12.2993.0
-        with:
-          directory: infra/terraform
-          output_format: sarif
-          output_file_path: checkov.sarif
-          soft_fail: false
-      - name: Upload SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
-        with:
-          sarif_file: checkov.sarif
-          category: checkov
+  # NOTE: the npm-audit job is added in Phase 6 (when services/frontend exists) and the
+  # Checkov IaC-scan job in Phase 7 (when infra/terraform exists). They are omitted here
+  # rather than guarded with hashFiles(), which is not valid in a job-level `if`.

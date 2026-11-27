@@ -140,7 +140,7 @@ HIGH/CRITICAL, SARIF to GitHub code scanning:
 **gitleaks** (secrets) · **Semgrep** (SAST) · **pip-audit + Trivy fs** (SCA) · **Hadolint**
 (Dockerfiles) · **Trivy image** (containers) · **Syft** (SBOM) · **pytest** (incl. SSRF + admin-authz
 tests). Pre-commit hooks mirror the fast checks locally. Checkov (Terraform) and npm audit (frontend)
-self-activate in later phases.
+jobs are added in Phases 7 and 6.
 
 Full stage table + false-positive policy: [`docs/security-scanning.md`](docs/security-scanning.md).
 

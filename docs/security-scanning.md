@@ -17,8 +17,8 @@ scanning as **SARIF** where supported.
 | Container scan | Trivy `image` | Vulns in built backend/fetcher images | HIGH/CRITICAL → exit 1, SARIF |
 | SBOM | Syft | Software bill of materials (SPDX) per service | Uploaded as build artifact |
 | Tests | pytest | Unit/integration — **incl. SSRF guard + admin authorization** | Fail on any failure |
-| IaC scan | Checkov | Terraform misconfig | Activates in Phase 7 (guarded by `hashFiles`) |
-| SCA (npm) | `npm audit` | Frontend dep vulns | Activates in Phase 6 (guarded by `hashFiles`) |
+| IaC scan | Checkov | Terraform misconfig | Added in Phase 7 (when `infra/terraform` exists) |
+| SCA (npm) | `npm audit` | Frontend dep vulns | Added in Phase 6 (when `services/frontend` exists) |
 
 Image signing (Cosign keyless) and DAST (OWASP ZAP) are deferred to later phases (9 and 8).
 
