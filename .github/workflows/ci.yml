@@ -21,8 +21,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.12"
       - name: Install backend + fetcher dev deps
@@ -48,10 +48,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # full history so gitleaks scans all commits
-      - uses: gitleaks/gitleaks-action@v2.3.9
+      - uses: gitleaks/gitleaks-action@v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -66,7 +66,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - name: Semgrep scan
         run: |
           semgrep scan \
@@ -74,7 +74,7 @@ jobs:
             --sarif --output semgrep.sarif --error
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -86,8 +86,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.12"
       - run: pip install pip-audit==2.7.3
@@ -102,7 +102,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - name: Install Trivy
         run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.70.0/contrib/install.sh | sh -s -- -b /usr/local/bin v0.70.0
       - name: Trivy filesystem scan
@@ -112,7 +112,7 @@ jobs:
             --format sarif --output trivy-fs.sarif .
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -129,8 +129,8 @@ jobs:
       matrix:
         service: [backend, fetcher]
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: actions/checkout@v7.0.1
+      - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: services/${{ matrix.service }}/Dockerfile
           failure-threshold: error
@@ -138,7 +138,7 @@ jobs:
           output-file: hadolint-${{ matrix.service }}.sarif
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: hadolint-${{ matrix.service }}.sarif
           category: hadolint-${{ matrix.service }}
@@ -155,7 +155,7 @@ jobs:
       matrix:
         service: [backend, fetcher]
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - name: Build image
         run: docker build -t breachatlas-${{ matrix.service }}:ci services/${{ matrix.service }}
       - name: Install Trivy
@@ -168,7 +168,7 @@ jobs:
             breachatlas-${{ matrix.service }}:ci
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: trivy-image-${{ matrix.service }}.sarif
           category: trivy-image-${{ matrix.service }}
@@ -183,14 +183,14 @@ jobs:
       matrix:
         service: [backend, fetcher]
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.17.8
+        uses: anchore/sbom-action@v0.24.4
         with:
           path: services/${{ matrix.service }}
           format: spdx-json
           output-file: sbom-${{ matrix.service }}.spdx.json
-      - uses: actions/upload-artifact@v4.4.3
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
@@ -202,8 +202,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
       - name: npm audit (fail on HIGH/CRITICAL)
@@ -220,8 +220,8 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.12"
       - run: pip install checkov==3.2.520
@@ -233,7 +233,7 @@ jobs:
             --output cli --output sarif --output-file-path console,checkov.sarif
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: checkov.sarif
           category: checkov
