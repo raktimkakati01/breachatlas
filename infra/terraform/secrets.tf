@@ -10,6 +10,7 @@ resource "random_password" "db" {
 }
 
 resource "aws_secretsmanager_secret" "db" {
+  # checkov:skip=CKV2_AWS_57:Automatic rotation needs a rotation Lambda + an RDS password-rotation flow; a documented production enhancement, out of scope for this portfolio stack.
   name                    = "${local.name}/db/credentials"
   description             = "RDS master credentials and connection URL for BreachAtlas."
   kms_key_id              = aws_kms_key.main.arn

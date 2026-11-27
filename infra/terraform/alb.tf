@@ -11,6 +11,7 @@
 
 resource "aws_lb" "main" {
   # checkov:skip=CKV_AWS_150:Deletion protection off so the portfolio stack is destroyable; enable for production.
+  # checkov:skip=CKV2_AWS_28:A WAFv2 WebACL is recommended for production but omitted here to avoid its monthly cost in a portfolio stack.
   name                       = "${local.name}-alb"
   internal                   = false
   load_balancer_type         = "application"
@@ -31,6 +32,7 @@ resource "aws_lb" "main" {
 
 # --- Target groups (ip targets, because Fargate uses awsvpc networking) ---
 resource "aws_lb_target_group" "frontend" {
+  # checkov:skip=CKV_AWS_378:ALB->task traffic is HTTP inside the private VPC; TLS terminates at the ALB (end-to-end TLS needs per-task certs).
   name        = "${local.name}-frontend"
   port        = 3000
   protocol    = "HTTP"
@@ -48,6 +50,7 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 resource "aws_lb_target_group" "backend" {
+  # checkov:skip=CKV_AWS_378:ALB->task traffic is HTTP inside the private VPC; TLS terminates at the ALB (end-to-end TLS needs per-task certs).
   name        = "${local.name}-backend"
   port        = 8000
   protocol    = "HTTP"

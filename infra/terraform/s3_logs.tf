@@ -6,6 +6,10 @@
 # bucket uses AES256 while everything else uses our CMK. That is an AWS platform
 # constraint, hence the documented Checkov skip below.
 resource "aws_s3_bucket" "alb_logs" {
+  # checkov:skip=CKV_AWS_145:ALB access-log delivery only supports SSE-S3 (AES256), not a customer-managed KMS key.
+  # checkov:skip=CKV_AWS_18:This IS the access-log bucket; enabling access logging on it would recurse.
+  # checkov:skip=CKV_AWS_144:Cross-region replication is unnecessary (and costly) for short-lived demo access logs.
+  # checkov:skip=CKV2_AWS_62:Event notifications add no value for a write-only ALB log sink in a portfolio stack.
   bucket        = "${local.name}-alb-logs-${data.aws_caller_identity.current.account_id}"
   force_destroy = true # portfolio convenience so `destroy` empties the bucket
   tags          = { Name = "${local.name}-alb-logs" }
@@ -33,7 +37,6 @@ resource "aws_s3_bucket_versioning" "alb_logs" {
   }
 }
 
-#checkov:skip=CKV_AWS_145:ALB access-log delivery only supports SSE-S3 (AES256), not a customer-managed KMS key.
 resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
   bucket = aws_s3_bucket.alb_logs.id
   rule {
