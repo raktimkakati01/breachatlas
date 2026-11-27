@@ -126,3 +126,52 @@ class HhsExtractor:
             records_affected=records,
             confident_fields=["records_affected"] if records is not None else [],
         )
+
+
+# --- Maine Attorney General breach notifications ---
+
+
+def _first_nonempty(raw: dict, keys: list[str]) -> str | None:
+    for key in keys:
+        value = (raw.get(key) or "").strip()
+        if value:
+            return value
+    return None
+
+
+class MaineAgExtractor:
+    """Parses rows from the Maine AG data-breach notification list (CSV).
+
+    Column headers vary over time, so each field tries a few known aliases.
+    """
+
+    _NAME_KEYS = ["Entity Name", "Organization Name", "Business Name", "Name"]
+    _DATE_KEYS = ["Reported Date", "Date Reported", "Date Received"]
+    _COUNT_KEYS = [
+        "Number of Maine Residents Affected",
+        "Maine Residents Affected",
+        "Number of Residents Affected",
+        "Total number of persons affected (including residents)",
+    ]
+
+    def extract(self, raw: dict) -> ExtractedBreach | None:
+        name = _first_nonempty(raw, self._NAME_KEYS)
+        disclosed = _parse_hhs_date(_first_nonempty(raw, self._DATE_KEYS) or "")
+        if not name or disclosed is None:
+            return None
+
+        count_raw = (_first_nonempty(raw, self._COUNT_KEYS) or "").replace(",", "")
+        records = int(count_raw) if count_raw.isdigit() else None
+
+        return ExtractedBreach(
+            organization=name,
+            date_disclosed=disclosed,
+            source_url="https://apps.web.maine.gov/online/aeviewer/ME/40/list.html",
+            source_title="Maine AG Data Breach Notification",
+            source_publisher="Maine Attorney General",
+            source_type=SourceType.regulator,
+            confirmation_status=ConfirmationStatus.confirmed,  # filed with the state regulator
+            country="United States",
+            records_affected=records,
+            confident_fields=["records_affected"] if records is not None else [],
+        )

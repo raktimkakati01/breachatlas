@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     FETCHER_URL: str = "http://fetcher:8001"
     EDGAR_INTERVAL_HOURS: int = 24
     HHS_INTERVAL_HOURS: int = 24
+    MAINE_INTERVAL_HOURS: int = 24
 
     @property
     def cors_origins(self) -> list[str]:

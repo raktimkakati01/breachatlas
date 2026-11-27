@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.ingestion.connectors.edgar import SecEdgarConnector
 from app.ingestion.connectors.hhs import HhsOcrConnector
+from app.ingestion.connectors.maine import MaineAgConnector
 from app.ingestion.fetch_client import http_fetch
 from app.ingestion.pipeline import ingest
 
@@ -36,6 +37,16 @@ def run_hhs_ocr() -> dict[str, int]:
         db.close()
 
 
+def run_maine_ag() -> dict[str, int]:
+    db = SessionLocal()
+    try:
+        result = ingest(db, MaineAgConnector(), http_fetch)
+        log.info("maine_ag ingest: %s", result)
+        return result
+    finally:
+        db.close()
+
+
 def build_scheduler() -> BlockingScheduler:
     scheduler = BlockingScheduler(timezone="UTC")
     scheduler.add_job(
@@ -51,6 +62,14 @@ def build_scheduler() -> BlockingScheduler:
         "interval",
         hours=settings.HHS_INTERVAL_HOURS,
         id="hhs_ocr",
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        run_maine_ag,
+        "interval",
+        hours=settings.MAINE_INTERVAL_HOURS,
+        id="maine_ag",
         max_instances=1,
         coalesce=True,
     )
