@@ -228,6 +228,11 @@ fetcher through an egress allowlist proxy.
   the list as a CSV export; the connector parses CSV and is built/tested against fixtures. Note:
   the live CSV export is JSF-driven, so a live run needs the portal's export request wired up
   (follow-up). Permitted for this use.
-- **Maine AG breach notifications** — _pending Phase 4._
+- **Maine AG breach notifications** — _checked 2026-11-27._ Public consumer-protection records
+  published by the Maine Attorney General as a searchable list with CSV export. `robots.txt`
+  returned **403** to a basic client (the site blocks non-browser clients; not an explicit crawl
+  rule), so live access should use appropriate headers + rate limits via the fetcher. Built/tested
+  against fixtures; column headers vary over time so the extractor matches several aliases.
+  Permitted for this use.
 - **UK ICO enforcement** — _pending Phase 4._
 - **News RSS (leads only)** — _pending Phase 4._

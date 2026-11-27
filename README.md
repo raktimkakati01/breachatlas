@@ -115,15 +115,17 @@ Ingestion is split for safety:
     full-text search API.
   - **HHS OCR** — US healthcare breaches affecting 500+ individuals (CSV breach portal; brings
     `records_affected` and sector).
+  - **Maine AG** — Maine Attorney General breach notifications (CSV list; per-entity resident
+    counts).
 
-Both are built/tested against recorded fixtures; a live SEC pass is opt-in:
+All are built/tested against recorded fixtures; a live SEC pass is opt-in:
 
 ```bash
 # Set a real contact UA first (SEC blocks requests without one):
 FETCHER_USER_AGENT='BreachAtlas/0.1 (you@example.com)' make ingest-edgar
 ```
 
-Maine AG, UK ICO, and news-RSS connectors follow in later Phase 4 iterations.
+UK ICO and news-RSS connectors follow in later Phase 4 iterations.
 
 ## Repository layout
 
