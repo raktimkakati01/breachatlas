@@ -12,8 +12,9 @@ class Settings(BaseSettings):
     # docker compose overrides this with the PostgreSQL URL.
     DATABASE_URL: str = "sqlite+pysqlite:///./breachatlas.db"
 
-    # Comma-separated allowed CORS origins.
-    BACKEND_CORS_ORIGINS: str = "http://localhost:3000"
+    # Comma-separated allowed CORS origins. Both localhost and 127.0.0.1 are
+    # allowed for local dev because the browser treats them as distinct origins.
+    BACKEND_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     # Public read API rate limit (requests per minute per client IP).
     API_RATE_LIMIT: int = 60
