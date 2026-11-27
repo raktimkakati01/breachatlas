@@ -1,0 +1,25 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is git-ignored.
+# Every value here is non-secret; the DB password is generated and stored in
+# Secrets Manager, never set in this file.
+
+aws_region  = "us-east-1"
+environment = "demo"
+
+# Spread across 2 AZs (minimum for ALB + RDS).
+az_count = 2
+
+# Smallest sizes that run the stack.
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+
+# Set these to serve real HTTPS traffic. Leave certificate_arn empty for
+# "artifact mode" (validates/plans without a domain or certificate).
+# certificate_arn = "arn:aws:acm:us-east-1:<account-id>:certificate/<id>"
+
+# Pin image tags to immutable digests in CI deploys instead of "latest".
+# backend_image_tag  = "sha-abc1234"
+# fetcher_image_tag  = "sha-abc1234"
+# frontend_image_tag = "sha-abc1234"
+
+# Set a real contact before any live fetching (SEC/ICO require it).
+# fetcher_user_agent = "BreachAtlas-fetcher/0.1 (contact: you@example.com)"

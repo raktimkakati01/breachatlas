@@ -43,7 +43,8 @@ npm-debug.log*
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
+# NOTE: .terraform.lock.hcl IS committed (HashiCorp guidance) for reproducible
+# provider versions — do not ignore it.
 
 # OS / editor
 .DS_Store

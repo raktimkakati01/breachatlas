@@ -195,6 +195,34 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
 
-  # NOTE: the npm-audit job is added in Phase 6 (when services/frontend exists) and the
-  # Checkov IaC-scan job in Phase 7 (when infra/terraform exists). They are omitted here
-  # rather than guarded with hashFiles(), which is not valid in a job-level `if`.
+  # --- IaC scan (Checkov) on the Terraform → SARIF to code scanning ---
+  # Fails the build on any failed policy; the only exemptions are the 8 inline
+  # `checkov:skip` comments in infra/terraform, each of which states its reason.
+  iac-scan:
+    name: IaC scan (Checkov)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install checkov==3.2.520
+      - name: Checkov scan (Terraform)
+        run: |
+          checkov -d infra/terraform \
+            --framework terraform \
+            --download-external-modules false \
+            --output cli --output sarif --output-file-path console,checkov.sarif
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3.27.5
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
+  # NOTE: the npm-audit job for services/frontend is activated in Phase 9
+  # (dependency hardening). It is omitted here rather than guarded with
+  # hashFiles(), which is not valid in a job-level `if`.

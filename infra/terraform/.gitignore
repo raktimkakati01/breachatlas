@@ -1,0 +1,18 @@
+# Terraform — never commit state (may hold secrets), local caches, or tfvars.
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Variable files may contain environment-specific or sensitive values.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Plan output can contain secrets.
+*.tfplan
+tfplan
+
+# Keep the provider lock file committed (.terraform.lock.hcl is NOT ignored).
