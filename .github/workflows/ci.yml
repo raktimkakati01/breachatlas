@@ -104,7 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: fs
           scanners: vuln,misconfig,secret
@@ -163,7 +163,7 @@ jobs:
       - name: Build image
         run: docker build -t breachatlas-${{ matrix.service }}:ci services/${{ matrix.service }}
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: image
           image-ref: breachatlas-${{ matrix.service }}:ci
