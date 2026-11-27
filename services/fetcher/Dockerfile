@@ -1,5 +1,5 @@
 # Isolated fetcher image. Non-root, minimal surface.
-FROM python:3.12.7-slim AS base
+FROM python:3.15.2-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
